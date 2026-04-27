@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@import '../@/styles/_variables.scss';
+@import '../@/styles/_keyframe-animations.scss';
+
+@theme {
+  /* Ombre centrate (senza offset orizzontale) */
+  --shadow-soft: 0 4px 20px 0 rgb(0 0 0 / 0.07);
+  --shadow-soft-lg: 0 8px 32px 0 rgb(0 0 0 / 0.10);
+}
+
+/* Safe area insets per iOS */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-right: env(safe-area-inset-right);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
+
+  /* Altezza della navbar globale — aggiorna qui se cambia */
+  --navbar-height: 44px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

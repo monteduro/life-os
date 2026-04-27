@@ -1,0 +1,99 @@
+@reference "tailwindcss";
+
+@layer components {
+  /* Tiptap Toolbar Scrollable Container */
+  .note-editor-toolbar-scroll {
+    @apply flex flex-[1_1_100%] min-w-0 overflow-x-auto;
+    scrollbar-width: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    [role="toolbar"], .tiptap-toolbar {
+      @apply flex-nowrap! w-max! relative! top-auto! bottom-auto! h-auto! border-none! p-0!;
+    }
+  }
+
+  /* Tiptap Editor Content Overrides */
+  .note-editor-content {
+    @apply w-full;
+  }
+
+  /* Table styles */
+  .note-editor-content .tiptap.ProseMirror table {
+    @apply border-collapse w-full my-4 text-sm;
+
+    td, th {
+      @apply border border-stone-200 px-3 py-2 align-top;
+      min-width: 4rem;
+    }
+
+    th {
+      @apply font-semibold bg-stone-50 text-left;
+    }
+
+    .selectedCell {
+      @apply bg-blue-50;
+    }
+  }
+
+  .note-editor-content .tiptap.ProseMirror.note-editor-tiptap {
+    @apply p-0 min-h-[80px] outline-none text-[0.9375rem] leading-[1.6] overflow-y-auto;
+    max-height: none;
+    
+    > *:first-child {
+      @apply mt-0;
+    }
+
+    > *:last-child {
+      @apply mb-0;
+    }
+
+    p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      @apply float-left text-stone-400 pointer-events-none h-0;
+    }
+  }
+}
+
+/* App-specific styles - use Tailwind utilities where possible */
+.app-shell {
+  height: 100%;
+  background: #f3f4f6;
+}
+
+/* Hover lift effect — usando transform diretto perché Tailwind v4 
+   usa la proprietà CSS `translate` nativa che non si anima bene su tutti i browser */
+.hover-lift {
+  transform: translateY(0);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px 0 rgb(0 0 0 / 0.10);
+}
+
+.hover-lift-sm {
+  transform: translateY(0);
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+.hover-lift-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06);
+}
+
+@keyframes noteExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-note-expand {
+  animation: noteExpand 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
