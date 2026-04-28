@@ -62,3 +62,8 @@ export async function moveVaultDocument(input: MoveVaultDocumentInput) {
   ensureDesktopShell()
   return invoke<VaultDocument>('move_document', { ...input })
 }
+
+export async function startVaultWatcher(rootPath: string) {
+  ensureDesktopShell()
+  return invoke<void>('start_vault_watcher', { rootPath })
+}

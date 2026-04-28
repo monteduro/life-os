@@ -1,3 +1,7 @@
+use notify::{
+  event::{CreateKind, ModifyKind, RemoveKind},
+  Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::{
@@ -5,9 +9,10 @@ use std::{
   fs,
   hash::{DefaultHasher, Hash, Hasher},
   path::{Path, PathBuf},
+  sync::Mutex,
   time::SystemTime,
 };
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 
 #[derive(Clone, Serialize)]
@@ -63,6 +68,18 @@ struct LocalIndexStats {
   indexed_documents: usize,
   indexed_folders: usize,
   indexed_at: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VaultWatchEvent {
+  root_path: String,
+  kind: String,
+  paths: Vec<String>,
+}
+
+struct VaultWatcherState {
+  watcher: Mutex<Option<RecommendedWatcher>>,
 }
 
 #[derive(Clone)]
@@ -353,6 +370,38 @@ fn search_local_index(
   Ok(results)
 }
 
+#[tauri::command]
+fn start_vault_watcher(
+  app: AppHandle,
+  state: tauri::State<'_, VaultWatcherState>,
+  root_path: String,
+) -> Result<(), String> {
+  let root = fs::canonicalize(&root_path)
+    .map_err(|error| format!("Impossibile avviare il watcher per `{root_path}`: {error}"))?;
+  let canonical_root_path = path_to_string(&root);
+  let database_path = local_index_database_path(&app, &canonical_root_path)?;
+  let app_handle = app.clone();
+
+  let mut watcher = notify::recommended_watcher(move |result: Result<Event, notify::Error>| {
+    if let Ok(event) = result {
+      let _ = handle_vault_watch_event(&app_handle, &canonical_root_path, &database_path, event);
+    }
+  })
+  .map_err(|error| format!("Impossibile creare il watcher filesystem: {error}"))?;
+
+  watcher
+    .watch(&root, RecursiveMode::Recursive)
+    .map_err(|error| format!("Impossibile osservare il vault `{}`: {error}", root.display()))?;
+
+  let mut active_watcher = state
+    .watcher
+    .lock()
+    .map_err(|_| "Impossibile acquisire il lock del watcher.".to_string())?;
+  *active_watcher = Some(watcher);
+
+  Ok(())
+}
+
 fn build_document_summary(
   path: &Path,
   root_path: &str,
@@ -497,6 +546,133 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
   })
 }
 
+fn handle_vault_watch_event(
+  app: &AppHandle,
+  root_path: &str,
+  database_path: &Path,
+  event: Event,
+) -> Result<(), String> {
+  let visible_paths = event
+    .paths
+    .iter()
+    .filter(|path| !should_skip_path(Path::new(root_path), path))
+    .map(|path| path_to_string(path))
+    .collect::<Vec<_>>();
+
+  if visible_paths.is_empty() {
+    return Ok(());
+  }
+
+  let kind_label = event_kind_label(&event.kind);
+
+  match &event.kind {
+    EventKind::Modify(ModifyKind::Data(_)) | EventKind::Modify(ModifyKind::Metadata(_)) => {
+      for path in &event.paths {
+        if path.is_file() && is_markdown_file(path) {
+          upsert_document_in_index(database_path, root_path, path)?;
+        }
+      }
+    }
+    EventKind::Create(CreateKind::File)
+    | EventKind::Remove(RemoveKind::File)
+    | EventKind::Modify(ModifyKind::Name(_))
+    | EventKind::Create(_)
+    | EventKind::Remove(_)
+    | EventKind::Modify(_)
+    | EventKind::Any
+    | EventKind::Other => {
+      let _ = rebuild_local_index_at_path(database_path, root_path)?;
+    }
+    _ => {}
+  }
+
+  app
+    .emit(
+      "vault-watch-updated",
+      VaultWatchEvent {
+        root_path: root_path.to_string(),
+        kind: kind_label.to_string(),
+        paths: visible_paths,
+      },
+    )
+    .map_err(|error| format!("Impossibile emettere l'evento watcher: {error}"))?;
+
+  Ok(())
+}
+
+fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) -> Result<(), String> {
+  let summary = build_document_summary(path, root_path)?;
+  let indexed_at = current_timestamp_string()?;
+  let content_hash = build_document_index_hash(&summary);
+
+  if let Some(parent) = database_path.parent() {
+    fs::create_dir_all(parent).map_err(|error| {
+      format!(
+        "Impossibile creare la cartella del database indice `{}`: {error}",
+        parent.display()
+      )
+    })?;
+  }
+
+  let connection = Connection::open(database_path).map_err(|error| {
+    format!(
+      "Impossibile aprire il database indice `{}`: {error}",
+      database_path.display()
+    )
+  })?;
+
+  initialize_local_index_schema(&connection)?;
+
+  connection
+    .execute(
+      "
+        INSERT INTO documents (
+          path, root_path, name, title, parent_path, excerpt, updated_at, indexed_at, content_hash
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+        ON CONFLICT(path) DO UPDATE SET
+          name = excluded.name,
+          title = excluded.title,
+          parent_path = excluded.parent_path,
+          excerpt = excluded.excerpt,
+          updated_at = excluded.updated_at,
+          indexed_at = excluded.indexed_at,
+          content_hash = excluded.content_hash
+      ",
+      params![
+        summary.path.as_str(),
+        root_path,
+        summary.name.as_str(),
+        summary.title.as_str(),
+        summary.parent_path.as_deref(),
+        summary.excerpt.as_str(),
+        summary.updated_at.as_deref(),
+        indexed_at.as_str(),
+        content_hash.as_str(),
+      ],
+    )
+    .map_err(|error| format!("Impossibile aggiornare il documento nell'indice: {error}"))?;
+
+  connection
+    .execute(
+      "DELETE FROM search_fts WHERE path = ?1 AND root_path = ?2",
+      params![summary.path.as_str(), root_path],
+    )
+    .and_then(|_| {
+      connection.execute(
+        "INSERT INTO search_fts (path, title, excerpt, root_path) VALUES (?1, ?2, ?3, ?4)",
+        params![
+          summary.path.as_str(),
+          summary.title.as_str(),
+          summary.excerpt.as_str(),
+          root_path,
+        ],
+      )
+    })
+    .map_err(|error| format!("Impossibile aggiornare il full-text index del documento: {error}"))?;
+
+  Ok(())
+}
+
 fn initialize_local_index_schema(connection: &Connection) -> Result<(), String> {
   connection.execute_batch(
     "
@@ -609,6 +785,17 @@ fn normalize_search_query(query: &str) -> String {
     .map(|term| format!("{term}*"))
     .collect::<Vec<_>>()
     .join(" OR ")
+}
+
+fn event_kind_label(kind: &EventKind) -> &'static str {
+  match kind {
+    EventKind::Create(_) => "create",
+    EventKind::Modify(_) => "modify",
+    EventKind::Remove(_) => "remove",
+    EventKind::Any => "any",
+    EventKind::Other => "other",
+    _ => "other",
+  }
 }
 
 fn hash_string(value: &str) -> String {
@@ -814,6 +1001,9 @@ fn path_to_string(path: &Path) -> String {
 
 pub fn run() {
   tauri::Builder::default()
+    .manage(VaultWatcherState {
+      watcher: Mutex::new(None),
+    })
     .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
       scan_vault,
@@ -823,7 +1013,8 @@ pub fn run() {
       delete_document,
       move_document,
       rebuild_local_index,
-      search_local_index
+      search_local_index,
+      start_vault_watcher
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application")

@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { rebuildLocalIndex, searchLocalIndex } from '../core/index/localIndexClient'
 import type { LocalIndexStats } from '../core/index/types'
 import { useNavigationStore } from './navigationStore'
-import { pickVaultDirectory } from '../core/vault/tauriVaultClient'
+import { pickVaultDirectory, startVaultWatcher } from '../core/vault/tauriVaultClient'
 import {
   activeDocumentRepository,
   activeWorkspaceRepository,
@@ -34,6 +34,7 @@ interface VaultState {
   openVault: () => Promise<void>
   loadVault: (rootPath: string) => Promise<void>
   rescanVault: () => Promise<void>
+  refreshVaultSnapshot: () => Promise<void>
   selectDocument: (path: string | null) => Promise<void>
   createDocument: (parentPath: string | null, title?: string) => Promise<VaultDocument | null>
   saveDocument: (path: string, content: string) => Promise<VaultDocument | null>
@@ -141,6 +142,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
           indexStatus: 'ready',
           indexError: null,
         })
+        await startVaultWatcher(snapshot.rootPath)
       } catch (error) {
         set({
           indexStatus: 'error',
@@ -164,6 +166,10 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     }
 
     await get().loadVault(rootPath)
+  },
+
+  async refreshVaultSnapshot() {
+    await refreshCurrentVaultSnapshot()
   },
 
   async selectDocument(path) {
