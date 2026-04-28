@@ -122,8 +122,8 @@ These are the main files to migrate first:
 - [ ] Create the Tauri shell and verify the current React/Vite app runs inside it.
 - [x] Add a dedicated `docs/` roadmap and keep it updated as the migration proceeds.
 - [x] Introduce shared storage ports so local markdown is not hard-coded across the app.
-- [ ] Keep local markdown as the primary implementation while preserving a future remote Postgres mode.
-- [ ] Define the initial vault contract:
+- [x] Keep local markdown as the primary implementation while preserving a future remote Postgres mode.
+- [x] Define the initial vault contract:
   - root folder selected by the user
   - recursive folder tree
   - markdown files as notes
@@ -132,7 +132,7 @@ These are the main files to migrate first:
   - YAML frontmatter
   - markdown body
   - stable note ID strategy
-- [ ] Decide where app data lives on disk:
+- [x] Decide where app data lives on disk:
   - SQLite DB
   - template registry
   - local app settings
@@ -151,7 +151,7 @@ These are the main files to migrate first:
 ### Phase 2: Vault Layer
 
 - [x] Create `src/core/vault/types.ts` for local document and folder types.
-- [ ] Implement `vaultRepository.ts` with:
+- [x] Implement `vaultRepository.ts` with:
   - `scanVault`
   - `readDocument`
   - `saveDocument`
@@ -161,12 +161,12 @@ These are the main files to migrate first:
   - `listFolders`
 - [ ] Implement safe path normalization and path-based guards.
 - [ ] Add attachment helpers for copy/import into the vault.
-- [ ] Add filesystem watcher support for external changes.
+- [x] Add filesystem watcher support for external changes.
 
 ### Phase 3: Markdown Canonical Format
 
-- [ ] Add a markdown parser/serializer module in `src/core/vault/markdownDocument.ts`.
-- [ ] Support YAML frontmatter read/write.
+- [x] Add a markdown parser/serializer module in `src/core/vault/markdownDocument.ts`.
+- [x] Support YAML frontmatter read/write.
 - [ ] Define the initial frontmatter keys:
   - `id`
   - `title`
@@ -174,8 +174,8 @@ These are the main files to migrate first:
   - `created_at`
   - `updated_at`
   - `tags`
-- [ ] Map markdown body to the current TipTap editor model.
-- [ ] Map TipTap output back to canonical markdown.
+- [x] Map markdown body to the current TipTap editor model.
+- [x] Map TipTap output back to canonical markdown.
 - [ ] Define fallback behavior for malformed frontmatter or unsupported markdown content.
 
 ### Phase 4: SQLite Index
@@ -189,7 +189,7 @@ These are the main files to migrate first:
   - `search_fts`
 - [x] Implement an initial full-vault indexing pass.
 - [x] Store content hash and last indexed timestamp per file.
-- [ ] Implement incremental re-indexing from watcher events.
+- [x] Implement incremental re-indexing from watcher events.
 - [x] Add full-text search queries for fast filtering and global search.
 - [ ] Add index health/rebuild commands.
 
@@ -205,16 +205,16 @@ These are the main files to migrate first:
 
 ### Phase 6: UI Migration
 
-- [ ] Update `Sidebar.tsx` to render the real filesystem tree.
-- [ ] Update `AppLayout.tsx` header to show the selected folder/path instead of authenticated user state.
-- [ ] Update `NoteList.tsx` to read documents from the local layer.
-- [ ] Update `NoteInline.tsx` create/save flows to write markdown files locally.
+- [x] Update `Sidebar.tsx` to render the real filesystem tree.
+- [x] Update `AppLayout.tsx` header to show the selected folder/path instead of authenticated user state.
+- [x] Update `NoteList.tsx` to read documents from the local layer.
+- [x] Update `NoteInline.tsx` create/save flows to write markdown files locally.
 - [ ] Update `NoteCard.tsx` and related list UI to use indexed document metadata.
 - [ ] Add empty states for:
   - no vault selected
   - empty vault
   - indexing in progress
-- [ ] Add UI feedback for external file changes detected by the watcher.
+- [x] Add UI feedback for external file changes detected by the watcher.
 
 ### Phase 7: Editor and Linking
 
@@ -225,10 +225,31 @@ These are the main files to migrate first:
 - [ ] Add rename/move support for folders and markdown files in the app UI.
 - [ ] Decide how note-to-note links are represented in markdown and in the index.
 - [ ] Extract note title and plain text summary from markdown for preview cards.
-- [ ] Add save semantics suitable for local files:
+- [x] Add save semantics suitable for local files:
   - autosave
   - explicit save shortcut
   - dirty state handling
+
+## Recommended Next Steps
+
+1. `Rename/move in app`
+   - folders
+   - markdown files
+   - mention propagation for folder moves
+
+2. `Index health commands`
+   - manual rebuild
+   - visible index status/debug info
+   - clearer recovery path when watcher/index drift
+
+3. `Template foundation`
+   - template registry outside the vault
+   - first schema version
+   - generic properties panel
+
+4. `Attachment flow`
+   - import/copy into vault
+   - reference from markdown/frontmatter
 
 ### Phase 8: Templates
 
