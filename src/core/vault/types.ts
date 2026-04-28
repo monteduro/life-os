@@ -4,6 +4,7 @@ export type {
   DocumentRecord as VaultDocument,
   DocumentSummary as VaultDocumentSummary,
   FolderNode as VaultFolderNode,
+  MoveFolderInput as MoveVaultFolderInput,
   MoveDocumentInput as MoveVaultDocumentInput,
   RenameFolderInput as RenameVaultFolderInput,
   SaveDocumentInput as SaveVaultDocumentInput,

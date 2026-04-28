@@ -221,8 +221,8 @@ These are the main files to migrate first:
 - [ ] Keep TipTap as the primary body editor.
 - [x] Replace mention suggestions backed by `useFolders()` with local vault-backed suggestions.
 - [x] Persist folder mentions as markdown wikilinks and reload them as TipTap mention nodes.
-- [ ] Add rename/move propagation for folder mentions when folders are renamed or moved inside the app.
-- [ ] Add rename/move support for folders and markdown files in the app UI.
+- [x] Add rename/move propagation for folder mentions when folders are renamed or moved inside the app.
+- [x] Add rename/move support for folders and markdown files in the app UI.
 - [ ] Decide how note-to-note links are represented in markdown and in the index.
 - [ ] Extract note title and plain text summary from markdown for preview cards.
 - [x] Add save semantics suitable for local files:
@@ -232,24 +232,24 @@ These are the main files to migrate first:
 
 ## Recommended Next Steps
 
-1. `Rename/move in app`
-   - folders
-   - markdown files
-   - mention propagation for folder moves
-
-2. `Index health commands`
+1. `Index health commands`
    - manual rebuild
    - visible index status/debug info
    - clearer recovery path when watcher/index drift
 
-3. `Template foundation`
+2. `Template foundation`
    - template registry outside the vault
    - first schema version
    - generic properties panel
 
-4. `Attachment flow`
+3. `Attachment flow`
    - import/copy into vault
    - reference from markdown/frontmatter
+
+4. `Document linking model`
+   - note-to-note links in markdown
+   - index representation
+   - preview/backlink behavior
 
 ### Phase 8: Templates
 

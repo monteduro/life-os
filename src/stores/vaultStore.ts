@@ -40,6 +40,7 @@ interface VaultState {
   selectDocument: (path: string | null) => Promise<void>
   createFolder: (parentPath: string | null, name: string) => Promise<string | null>
   renameFolder: (path: string, name: string) => Promise<string | null>
+  moveFolder: (path: string, targetParentPath: string | null) => Promise<string | null>
   createDocument: (parentPath: string | null, title?: string) => Promise<VaultDocument | null>
   moveDocument: (path: string, targetFolderPath: string | null, fileName?: string) => Promise<VaultDocument | null>
   saveDocument: (path: string, content: string) => Promise<VaultDocument | null>
@@ -243,7 +244,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
     try {
       const renamedPath = await activeWorkspaceRepository.renameFolder({ path, name })
-      await propagateFolderMentionRename(rootPath, path, renamedPath)
+      await propagateFolderPathChange(rootPath, path, renamedPath)
       await refreshCurrentVaultSnapshot()
       if (get().searchQuery.trim()) {
         await get().runSearch(get().searchQuery)
@@ -253,6 +254,35 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Impossibile rinominare la cartella.',
+      })
+      return null
+    }
+  },
+
+  async moveFolder(path, targetParentPath) {
+    const rootPath = get().currentVault?.rootPath
+
+    if (!rootPath) {
+      set({ error: 'Nessun vault aperto.' })
+      return null
+    }
+
+    try {
+      const movedPath = await activeWorkspaceRepository.moveFolder({
+        rootPath,
+        path,
+        targetParentPath,
+      })
+      await propagateFolderPathChange(rootPath, path, movedPath)
+      await refreshCurrentVaultSnapshot()
+      if (get().searchQuery.trim()) {
+        await get().runSearch(get().searchQuery)
+      }
+      set({ error: null })
+      return movedPath
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Impossibile spostare la cartella.',
       })
       return null
     }
@@ -414,7 +444,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   },
 }))
 
-async function propagateFolderMentionRename(rootPath: string, oldFolderPath: string, newFolderPath: string) {
+async function propagateFolderPathChange(rootPath: string, oldFolderPath: string, newFolderPath: string) {
   const oldRelativePath = toVaultRelativePath(rootPath, oldFolderPath)
   const newRelativePath = toVaultRelativePath(rootPath, newFolderPath)
 

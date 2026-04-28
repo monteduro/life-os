@@ -38,6 +38,12 @@ export interface RenameFolderInput {
   name: string
 }
 
+export interface MoveFolderInput {
+  rootPath: string
+  path: string
+  targetParentPath: string | null
+}
+
 export interface DocumentRecord {
   path: string
   name: string

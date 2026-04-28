@@ -240,6 +240,44 @@ fn rename_folder(path: String, name: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn move_folder(root_path: String, path: String, target_parent_path: Option<String>) -> Result<String, String> {
+  let root = resolve_existing_dir(&root_path, "vault")?;
+  let source_path = resolve_existing_dir(&path, "cartella da spostare")?;
+  let target_parent = match target_parent_path.as_deref() {
+    Some(path) => resolve_existing_dir(path, "cartella destinazione")?,
+    None => root.clone(),
+  };
+
+  if !source_path.starts_with(&root) || !target_parent.starts_with(&root) {
+    return Err("La cartella non appartiene al vault corrente.".to_string());
+  }
+
+  if target_parent == source_path {
+    return Err("Una cartella non puo` essere spostata dentro se stessa.".to_string());
+  }
+
+  if target_parent.starts_with(&source_path) {
+    return Err("Una cartella non puo` essere spostata dentro una sua sottocartella.".to_string());
+  }
+
+  let folder_name = source_path
+    .file_name()
+    .and_then(|name| name.to_str())
+    .ok_or_else(|| "Impossibile determinare il nome della cartella.".to_string())?;
+  let destination_path = build_unique_folder_path(&target_parent, folder_name);
+
+  fs::rename(&source_path, &destination_path).map_err(|error| {
+    format!(
+      "Impossibile spostare `{}` in `{}`: {error}",
+      source_path.display(),
+      destination_path.display()
+    )
+  })?;
+
+  Ok(path_to_string(&destination_path))
+}
+
+#[tauri::command]
 fn read_document(path: String) -> Result<VaultDocument, String> {
   let document_path = PathBuf::from(&path);
   let raw_content = fs::read_to_string(&document_path)
@@ -1144,6 +1182,7 @@ pub fn run() {
       move_document,
       create_folder,
       rename_folder,
+      move_folder,
       rebuild_local_index,
       search_local_index,
       start_vault_watcher
@@ -1368,6 +1407,29 @@ Great soundtrack and visuals.\n",
       .expect("rename_folder should succeed");
 
     assert!(PathBuf::from(&renamed).exists());
+    assert!(!source.exists());
+  }
+
+  #[test]
+  fn move_folder_moves_directory_under_new_parent() {
+    let vault = create_temp_vault();
+    let source = vault.join("Drafts");
+    let target_parent = vault.join("Projects");
+
+    create_dir_all(&source).expect("failed to create source folder");
+    create_dir_all(&target_parent).expect("failed to create target parent");
+
+    let moved = move_folder(
+      path_to_string(&vault),
+      path_to_string(&source),
+      Some(path_to_string(&target_parent)),
+    )
+    .expect("move_folder should succeed");
+
+    let moved_path = PathBuf::from(&moved);
+    let canonical_target_parent = fs::canonicalize(&target_parent).expect("should canonicalize target parent");
+    assert!(moved_path.exists());
+    assert_eq!(moved_path.parent(), Some(canonical_target_parent.as_path()));
     assert!(!source.exists());
   }
 

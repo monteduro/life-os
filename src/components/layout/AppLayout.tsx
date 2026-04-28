@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Search } from 'lucide-react'
+import { FolderInput, Pencil, Search } from 'lucide-react'
 
 import type { FolderNode } from '../../core/domain/storage'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useVaultStore } from '../../stores/vaultStore'
+import FolderMoveDialog from '../Form/FolderMoveDialog'
 import TextPromptDialog from '../Form/TextPromptDialog'
 import Sidebar from './Sidebar'
 
@@ -17,9 +18,11 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [renameFolderOpen, setRenameFolderOpen] = useState(false)
+  const [moveFolderOpen, setMoveFolderOpen] = useState(false)
   const { sidebarOpen, setSidebarOpen, selectedFolderId, selectedFolderName, selectFolder } = useNavigationStore()
   const {
     currentVault,
+    moveFolder,
     openVault,
     renameFolder,
     rescanVault,
@@ -58,6 +61,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
     selectFolder(renamedPath, nextName)
     setRenameFolderOpen(false)
+  }
+
+  const handleMoveFolder = async (targetParentPath: string | null) => {
+    if (!selectedFolderNode) {
+      return
+    }
+
+    const movedPath = await moveFolder(selectedFolderNode.path, targetParentPath)
+    if (!movedPath) {
+      return
+    }
+
+    selectFolder(movedPath, selectedFolderNode.name)
+    setMoveFolderOpen(false)
   }
 
   return (
@@ -109,14 +126,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 {currentTitle}
               </span>
               {canRenameSelectedFolder && (
-                <button
-                  type="button"
-                  onClick={() => setRenameFolderOpen(true)}
-                  className="shrink-0 rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
-                  aria-label="Rename folder"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setMoveFolderOpen(true)}
+                    className="shrink-0 rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                    aria-label="Move folder"
+                  >
+                    <FolderInput className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRenameFolderOpen(true)}
+                    className="shrink-0 rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                    aria-label="Rename folder"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </>
               )}
             </div>
             {currentVault && (
@@ -177,6 +204,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         cancelLabel="Cancel"
         onCancel={() => setRenameFolderOpen(false)}
         onConfirm={handleRenameFolder}
+      />
+
+      <FolderMoveDialog
+        open={moveFolderOpen && !!selectedFolderNode}
+        currentFolderId={selectedFolderNode?.path ?? ''}
+        currentFolderName={selectedFolderNode?.name ?? ''}
+        targetParentId={selectedFolderNode?.parentPath ?? null}
+        onCancel={() => setMoveFolderOpen(false)}
+        onConfirm={handleMoveFolder}
       />
     </div>
   )

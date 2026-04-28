@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import type {
   CreateVaultFolderInput,
   CreateVaultDocumentInput,
+  MoveVaultFolderInput,
   MoveVaultDocumentInput,
   RenameVaultFolderInput,
   SaveVaultDocumentInput,
@@ -48,6 +49,11 @@ export async function createVaultFolder(input: CreateVaultFolderInput) {
 export async function renameVaultFolder(input: RenameVaultFolderInput) {
   ensureDesktopShell()
   return invoke<string>('rename_folder', { ...input })
+}
+
+export async function moveVaultFolder(input: MoveVaultFolderInput) {
+  ensureDesktopShell()
+  return invoke<string>('move_folder', { ...input })
 }
 
 export async function readVaultDocument(path: string) {

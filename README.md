@@ -58,16 +58,18 @@ Implemented today:
 - open local folder as vault
 - recursive vault scan for folders and `.md` files
 - local document create/read/save/delete flows
+- in-app folder and file rename/move flows
 - TipTap to Markdown round-trip
 - YAML frontmatter preservation
+- SQLite local index for search
 - folder mentions persisted as wikilinks like `[[Projects/Alpha]]`
+- mention propagation on folder rename/move
 
 Planned next:
 
-- SQLite local index
-- file/folder rename and move in-app
-- mention ref updates on rename/move
 - template registry outside the vault
+- attachment import/copy flow
+- document-to-document linking model
 - richer structured views and stats
 
 The working roadmap lives in [docs/desktop-filesystem-roadmap.md](docs/desktop-filesystem-roadmap.md).

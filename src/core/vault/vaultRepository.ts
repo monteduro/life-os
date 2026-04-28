@@ -2,6 +2,7 @@ import {
   createVaultFolder,
   createVaultDocument,
   deleteVaultDocument,
+  moveVaultFolder,
   moveVaultDocument,
   readVaultDocument,
   renameVaultFolder,
@@ -11,6 +12,7 @@ import {
 import type {
   CreateVaultFolderInput,
   CreateVaultDocumentInput,
+  MoveVaultFolderInput,
   MoveVaultDocumentInput,
   RenameVaultFolderInput,
   SaveVaultDocumentInput,
@@ -22,6 +24,7 @@ export const localMarkdownRepository: WorkspaceRepository & DocumentRepository =
   scanWorkspace: scanVault,
   createFolder: (input: CreateVaultFolderInput) => createVaultFolder(input),
   renameFolder: (input: RenameVaultFolderInput) => renameVaultFolder(input),
+  moveFolder: (input: MoveVaultFolderInput) => moveVaultFolder(input),
   readDocument: readVaultDocument,
   createDocument: (input: CreateVaultDocumentInput) => createVaultDocument(input),
   saveDocument: (input: SaveVaultDocumentInput) => saveVaultDocument(input),
