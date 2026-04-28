@@ -170,8 +170,8 @@ export default function NoteEditor({
                 <ToolbarSeparator />
 
                 <ToolbarGroup>
-                  <HeadingDropdownMenu levels={[1, 2, 3]} />
-                  <ListDropdownMenu types={["bulletList", "orderedList", "taskList"]} />
+                  <HeadingDropdownMenu levels={[1, 2, 3]} portal />
+                  <ListDropdownMenu types={["bulletList", "orderedList", "taskList"]} portal />
                   <BlockquoteButton />
                   <CodeBlockButton />
                   <TableButton />

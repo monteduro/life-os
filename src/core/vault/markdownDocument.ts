@@ -7,7 +7,7 @@ const markdownParser = new MarkdownIt('commonmark', {
   breaks: false,
   html: false,
   linkify: false,
-}).enable('strikethrough')
+}).enable(['strikethrough', 'table'])
 
 type MarkdownToken = ReturnType<MarkdownIt['parse']>[number]
 
@@ -132,6 +132,15 @@ function parseBlockTokens(tokens: MarkdownToken[], start: number, end: number): 
         index = closingIndex + 1
         break
       }
+      case 'table_open': {
+        const closingIndex = findClosingToken(tokens, index, 'table_open', 'table_close')
+        const tableNode = parseTable(tokens, index + 1, closingIndex)
+        if (tableNode) {
+          nodes.push(tableNode)
+        }
+        index = closingIndex + 1
+        break
+      }
       case 'fence':
       case 'code_block': {
         nodes.push({
@@ -176,6 +185,65 @@ function parseListItems(tokens: MarkdownToken[], start: number, end: number): Ti
   }
 
   return items
+}
+
+function parseTable(tokens: MarkdownToken[], start: number, end: number): TipTapNode | null {
+  const rows: TipTapNode[] = []
+  let index = start
+
+  while (index < end) {
+    const token = tokens[index]
+
+    if (token?.type !== 'tr_open') {
+      index += 1
+      continue
+    }
+
+    const closingIndex = findClosingToken(tokens, index, 'tr_open', 'tr_close')
+    const cells: TipTapNode[] = []
+    let cellIndex = index + 1
+
+    while (cellIndex < closingIndex) {
+      const cellToken = tokens[cellIndex]
+
+      if (cellToken?.type !== 'th_open' && cellToken?.type !== 'td_open') {
+        cellIndex += 1
+        continue
+      }
+
+      const isHeader = cellToken.type === 'th_open'
+      const cellCloseType = isHeader ? 'th_close' : 'td_close'
+      const cellClosingIndex = findClosingToken(tokens, cellIndex, cellToken.type, cellCloseType)
+      const contentToken = tokens[cellIndex + 1]
+      const inlineChildren = contentToken?.type === 'inline' ? parseInlineTokens(contentToken.children ?? []) : []
+
+      cells.push({
+        type: isHeader ? 'tableHeader' : 'tableCell',
+        content: [{
+          type: 'paragraph',
+          content: inlineChildren,
+        }],
+      })
+
+      cellIndex = cellClosingIndex + 1
+    }
+
+    rows.push({
+      type: 'tableRow',
+      content: cells,
+    })
+
+    index = closingIndex + 1
+  }
+
+  if (rows.length === 0) {
+    return null
+  }
+
+  return {
+    type: 'table',
+    content: rows,
+  }
 }
 
 function convertBulletList(items: TipTapNode[]): TipTapNode {
@@ -399,9 +467,34 @@ function serializeBlock(node: TipTapNode, indent: number): string {
     }
     case 'horizontalRule':
       return '---'
+    case 'table':
+      return serializeTable(node)
     default:
       return indentLines(serializeInline(node.content ?? []), indent)
   }
+}
+
+function serializeTable(node: TipTapNode) {
+  const rows = node.content ?? []
+  if (rows.length === 0) {
+    return ''
+  }
+
+  const headerRow = rows[0]
+  const headerCells = (headerRow.content ?? []).map((cell) => serializeTableCell(cell))
+
+  if (headerCells.length === 0) {
+    return ''
+  }
+
+  const separatorRow = headerCells.map(() => '---')
+  const bodyRows = rows.slice(1).map((row) => (row.content ?? []).map((cell) => serializeTableCell(cell)))
+
+  return [
+    serializeMarkdownTableRow(headerCells),
+    serializeMarkdownTableRow(separatorRow),
+    ...bodyRows.map((cells) => serializeMarkdownTableRow(cells)),
+  ].join('\n')
 }
 
 function serializeList(
@@ -459,6 +552,23 @@ function serializeInline(content: TipTapNode[]): string {
       return serializeInline(node.content ?? [])
     })
     .join('')
+}
+
+function serializeTableCell(cell: TipTapNode) {
+  const paragraph = cell.content?.[0]
+  if (!paragraph) {
+    return ''
+  }
+
+  return serializeInline(paragraph.content ?? []).replace(/\n+/g, ' ').trim()
+}
+
+function serializeMarkdownTableRow(cells: string[]) {
+  return `| ${cells.map(escapeTableCell).join(' | ')} |`
+}
+
+function escapeTableCell(value: string) {
+  return value.replace(/\|/g, '\\|')
 }
 
 function serializeMention(node: TipTapNode) {
