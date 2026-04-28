@@ -7,7 +7,7 @@ const markdownParser = new MarkdownIt('commonmark', {
   breaks: false,
   html: false,
   linkify: false,
-})
+}).enable('strikethrough')
 
 type MarkdownToken = ReturnType<MarkdownIt['parse']>[number]
 
