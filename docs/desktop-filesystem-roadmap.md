@@ -1,6 +1,6 @@
 # Desktop Filesystem Roadmap
 
-Last updated: 2026-04-28
+Last updated: 2026-04-29
 
 ## Locked Decisions
 
@@ -147,6 +147,7 @@ These are the main files to migrate first:
   - loading state for initial scan/index
 - [ ] Remove or isolate auth flows so they do not block the new local app flow.
 - [x] Add a basic desktop error surface for filesystem permission failures.
+- [x] Add a custom macOS overlay titlebar with draggable app chrome.
 
 ### Phase 2: Vault Layer
 
@@ -215,6 +216,8 @@ These are the main files to migrate first:
   - empty vault
   - indexing in progress
 - [x] Add UI feedback for external file changes detected by the watcher.
+- [x] Add sidebar drag and drop for moving folders.
+- [x] Align the header/search/content layout around a shared content width.
 
 ### Phase 7: Editor and Linking
 
@@ -250,6 +253,10 @@ These are the main files to migrate first:
    - note-to-note links in markdown
    - index representation
    - preview/backlink behavior
+
+5. `Repository hygiene`
+   - add a real `CHANGELOG.md`
+   - keep README and roadmap in sync with major shipped slices
 
 ## Possible Future Enhancements
 

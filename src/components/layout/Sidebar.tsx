@@ -11,12 +11,15 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Folder as FolderIcon, FolderPlus } from 'lucide-react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useVaultStore } from '../../stores/vaultStore'
 import { mapVaultFoldersToAppFolders } from '../../core/vault/adapters'
 import { getIcon } from '../../lib/iconMap'
 import TextPromptDialog from '../Form/TextPromptDialog'
+import Tooltip from '../ui/Tooltip'
 import SidebarNavItem from './SidebarNavItem'
 import FolderTree from './FolderTree'
 import type { Folder } from '../../types'
@@ -153,6 +156,27 @@ export default function Sidebar() {
   )
 }
 
+function startWindowDrag() {
+  if (!('__TAURI_INTERNALS__' in window)) {
+    return
+  }
+
+  void getCurrentWindow().startDragging()
+}
+
+function handleWindowDragMouseDown(event: ReactMouseEvent<HTMLElement>) {
+  if (event.button !== 0) {
+    return
+  }
+
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, input, textarea, select, a, [role="button"], [data-no-window-drag]')) {
+    return
+  }
+
+  startWindowDrag()
+}
+
 // ─── Sidebar Content ──────────────────────────────────────────────────────────
 
 interface SidebarContentProps {
@@ -194,24 +218,36 @@ function SidebarContent({
 
   return (
     <>
-      {/* Logo */}
+      {/* Logo / Titlebar spacing */}
       <div
-        className="px-6 flex items-center justify-between border-b border-stone-100 shrink-0"
-        style={{ height: 'var(--navbar-height)' }}
+        className="shrink-0 border-b border-stone-100 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/75"
+        onMouseDown={handleWindowDragMouseDown}
       >
-        <span className="text-base font-semibold text-stone-800 tracking-tight">
-          smart<span className="text-stone-400 font-normal">notes</span>
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            void onCreateFolder()
-          }}
-          className="p-1.5 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
-          aria-label="Create folder"
+        <div
+          data-tauri-drag-region
+          onMouseDown={startWindowDrag}
+          style={{ height: 'var(--titlebar-inset-current)' }}
+        />
+        <div
+          className="pl-4 pr-3 flex items-center justify-between"
+          style={{ height: 'var(--app-header-height)' }}
         >
-          <FolderPlus className="w-4 h-4" />
-        </button>
+          <span className="text-base font-semibold text-stone-800 tracking-tight">
+            life<span className="text-stone-400 font-normal">OS</span>
+          </span>
+          <Tooltip content="Create folder">
+            <button
+              type="button"
+              onClick={() => {
+                void onCreateFolder()
+              }}
+              className="p-1.5 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+              aria-label="Create folder"
+            >
+              <FolderPlus className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -228,7 +264,7 @@ function SidebarContent({
         <div className="mb-1">
           <SidebarNavItem
             Icon={getIcon(null, 'inbox')}
-            label="Root"
+            label="Inbox"
             count={inboxCount}
             isActive={selectedFolderId === null}
             onClick={selectInbox}

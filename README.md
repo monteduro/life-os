@@ -59,11 +59,13 @@ Implemented today:
 - recursive vault scan for folders and `.md` files
 - local document create/read/save/delete flows
 - in-app folder and file rename/move flows
+- sidebar drag and drop for folders
 - TipTap to Markdown round-trip
 - YAML frontmatter preservation
 - SQLite local index for search
 - folder mentions persisted as wikilinks like `[[Projects/Alpha]]`
 - mention propagation on folder rename/move
+- custom macOS overlay titlebar with draggable app chrome
 
 Planned next:
 
@@ -73,6 +75,7 @@ Planned next:
 - richer structured views and stats
 
 The working roadmap lives in [docs/desktop-filesystem-roadmap.md](docs/desktop-filesystem-roadmap.md).
+A proper project changelog should be added soon as the pace of UI and architecture changes increases.
 
 ## Tech Stack
 

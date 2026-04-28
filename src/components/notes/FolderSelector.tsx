@@ -84,7 +84,7 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
             ) : (
                 <FolderIcon className="w-3.5 h-3.5 text-stone-400" />
             )}
-            <span>{activeFolder?.name || currentVault?.rootName || 'Root'}</span>
+            <span>{activeFolder?.name || 'Inbox'}</span>
         </div>
     )
 

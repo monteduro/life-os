@@ -16,8 +16,10 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
   --safe-area-inset-left: env(safe-area-inset-left);
 
-  /* Altezza della navbar globale — aggiorna qui se cambia */
-  --navbar-height: 44px;
+  --titlebar-inset: 28px;
+  --titlebar-inset-current: var(--titlebar-inset);
+  --app-header-height: 56px;
+  --navbar-height: calc(var(--titlebar-inset-current) + var(--app-header-height));
 }
 
 html,

@@ -139,20 +139,17 @@ export default function NoteList({ folderId = null }: NoteListProps) {
               Nuova nota
             </button>
           </div>
-          <p className="mt-4 text-base text-stone-700 leading-7">
+          <p className="mt-4 text-sm text-stone-500 leading-6">
             {isSearchActive
-              ? `Ricerca locale sull'indice SQLite per “${searchQuery.trim()}”.`
-              : `Questa e\` la tua UI principale riattaccata al vault locale. In questo step la
-            navigazione e\` read-only: leggiamo file Markdown reali senza backend e senza
-            ancora riattivare il salvataggio TipTap. La creazione file ora passa pero\`
-            attraverso il repository locale reale.`}
+              ? `Local search over the SQLite index for “${searchQuery.trim()}”.`
+              : 'This is your Inbox. Create notes quickly here without worrying about organizing them yet. When you have spare moments in the day, you can sort them later. Verba volant, scripta manent.'}
           </p>
           {isSearchActive && (
             <div className="mt-4 flex items-center gap-3 text-sm text-stone-500">
               <span>
-                {searchStatus === 'searching' && 'Ricerca in corso…'}
-                {searchStatus === 'ready' && `${allNotes.length} risultati`}
-                {searchStatus === 'error' && (searchError ?? 'Ricerca fallita')}
+                {searchStatus === 'searching' && 'Searching…'}
+                {searchStatus === 'ready' && `${allNotes.length} results`}
+                {searchStatus === 'error' && (searchError ?? 'Search failed')}
               </span>
             </div>
           )}
