@@ -1,21 +1,30 @@
 import { create } from 'zustand'
 
+import { rebuildLocalIndex } from '../core/index/localIndexClient'
+import type { LocalIndexStats } from '../core/index/types'
 import { useNavigationStore } from './navigationStore'
 import { pickVaultDirectory } from '../core/vault/tauriVaultClient'
-import { vaultRepository } from '../core/vault/vaultRepository'
+import {
+  activeDocumentRepository,
+  activeWorkspaceRepository,
+} from '../core/storage/activeStorage'
 import type { VaultDocument, VaultSnapshot } from '../core/vault/types'
 
 const RECENT_VAULT_PATH_KEY = 'smart-notes.desktop.recent-vault-path'
 
 type VaultStatus = 'idle' | 'loading' | 'ready' | 'error'
+type IndexStatus = 'idle' | 'indexing' | 'ready' | 'error'
 
 interface VaultState {
   status: VaultStatus
+  indexStatus: IndexStatus
   error: string | null
+  indexError: string | null
   currentVault: VaultSnapshot | null
   selectedDocument: VaultDocument | null
   selectedDocumentPath: string | null
   isReadingDocument: boolean
+  currentIndex: LocalIndexStats | null
   loadRecentVault: () => Promise<void>
   openVault: () => Promise<void>
   loadVault: (rootPath: string) => Promise<void>
@@ -42,18 +51,21 @@ async function refreshCurrentVaultSnapshot() {
     return null
   }
 
-  const snapshot = await vaultRepository.scan(rootPath)
+  const snapshot = await activeWorkspaceRepository.scanWorkspace(rootPath)
   useVaultStore.setState({ currentVault: snapshot, error: null })
   return snapshot
 }
 
 export const useVaultStore = create<VaultState>((set, get) => ({
   status: 'idle',
+  indexStatus: 'idle',
   error: null,
+  indexError: null,
   currentVault: null,
   selectedDocument: null,
   selectedDocumentPath: null,
   isReadingDocument: false,
+  currentIndex: null,
 
   async loadRecentVault() {
     const recentPath = readRecentVaultPath()
@@ -83,27 +95,46 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   async loadVault(rootPath) {
     set({
       status: 'loading',
+      indexStatus: 'idle',
       error: null,
+      indexError: null,
       currentVault: null,
       selectedDocument: null,
       selectedDocumentPath: null,
       isReadingDocument: false,
+      currentIndex: null,
     })
 
     try {
-      const snapshot = await vaultRepository.scan(rootPath)
+      const snapshot = await activeWorkspaceRepository.scanWorkspace(rootPath)
       persistRecentVaultPath(snapshot.rootPath)
 
       useNavigationStore.getState().selectInbox()
 
       set({
         status: 'ready',
+        indexStatus: 'indexing',
         error: null,
         currentVault: snapshot,
       })
+
+      try {
+        const indexStats = await rebuildLocalIndex(snapshot.rootPath)
+        set({
+          currentIndex: indexStats,
+          indexStatus: 'ready',
+          indexError: null,
+        })
+      } catch (error) {
+        set({
+          indexStatus: 'error',
+          indexError: error instanceof Error ? error.message : 'Indicizzazione SQLite fallita.',
+        })
+      }
     } catch (error) {
       set({
         status: 'error',
+        indexStatus: 'idle',
         error: error instanceof Error ? error.message : 'Indicizzazione iniziale fallita.',
         currentVault: null,
       })
@@ -136,7 +167,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     })
 
     try {
-      const document = await vaultRepository.readDocument(path)
+      const document = await activeDocumentRepository.readDocument(path)
       set({
         selectedDocument: document,
         isReadingDocument: false,
@@ -158,7 +189,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     }
 
     try {
-      const document = await vaultRepository.createDocument({
+      const document = await activeDocumentRepository.createDocument({
         rootPath,
         parentPath,
         title,
@@ -176,7 +207,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   async saveDocument(path, content) {
     try {
-      const document = await vaultRepository.saveDocument({ path, content })
+      const document = await activeDocumentRepository.saveDocument({ path, content })
       await refreshCurrentVaultSnapshot()
       set({
         selectedDocument: document,
@@ -194,7 +225,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   async deleteDocument(path) {
     try {
-      await vaultRepository.deleteDocument(path)
+      await activeDocumentRepository.deleteDocument(path)
       await refreshCurrentVaultSnapshot()
 
       const selectedPath = get().selectedDocumentPath

@@ -1,6 +1,6 @@
 # Desktop Filesystem Roadmap
 
-Last updated: 2026-04-23
+Last updated: 2026-04-28
 
 ## Locked Decisions
 
@@ -27,27 +27,54 @@ To:
 - SQLite as performance/index layer
 - templates as app-level schema/rendering, not vault config
 
+The architecture is now being shaped so the same product can later support:
+
+- `Local Markdown mode`
+- `Remote Postgres mode`
+
+without rewriting the UI, editor, or template system.
+
 ## Target Architecture
 
 ### Layers
 
-1. `Vault layer`
+1. `Core domain`
+   Shared document, folder, template, link, and view models regardless of persistence mode.
+2. `Ports layer`
+   Shared repository and service interfaces used by the app.
+3. `Local Markdown adapter`
    Reads and writes folders, markdown files, attachments, moves, deletes, and file watcher events.
-2. `Index layer`
+4. `Remote Postgres adapter`
+   Will read and write the same domain model through a backend API.
+5. `Index layer`
    Keeps a SQLite index in sync with the vault and serves fast queries.
-3. `Template layer`
+6. `Template layer`
    Loads template JSON from app data, resolves note presentation and structured fields.
-4. `Editor layer`
+7. `Editor layer`
    Uses TipTap for the markdown body and a separate properties model for frontmatter data.
 
 ### Planned Modules
 
 ```text
+src/core/domain/
+  storage.ts
+
+src/core/ports/
+  documentRepository.ts
+  workspaceRepository.ts
+
+src/core/storage/
+  activeStorage.ts
+
 src/core/vault/
   types.ts
   vaultRepository.ts
   vaultWatcher.ts
   markdownDocument.ts
+
+src/core/remote/
+  remoteRepository.ts
+  remoteClient.ts
 
 src/core/index/
   indexRepository.ts
@@ -94,6 +121,8 @@ These are the main files to migrate first:
 
 - [ ] Create the Tauri shell and verify the current React/Vite app runs inside it.
 - [x] Add a dedicated `docs/` roadmap and keep it updated as the migration proceeds.
+- [x] Introduce shared storage ports so local markdown is not hard-coded across the app.
+- [ ] Keep local markdown as the primary implementation while preserving a future remote Postgres mode.
 - [ ] Define the initial vault contract:
   - root folder selected by the user
   - recursive folder tree
@@ -151,15 +180,15 @@ These are the main files to migrate first:
 
 ### Phase 4: SQLite Index
 
-- [ ] Add SQLite integration in the Tauri layer.
-- [ ] Create the initial schema:
+- [x] Add SQLite integration in the Tauri layer.
+- [x] Create the initial schema:
   - `documents`
   - `folders`
   - `document_links`
   - `document_tags`
   - `search_fts`
-- [ ] Implement an initial full-vault indexing pass.
-- [ ] Store content hash and last indexed timestamp per file.
+- [x] Implement an initial full-vault indexing pass.
+- [x] Store content hash and last indexed timestamp per file.
 - [ ] Implement incremental re-indexing from watcher events.
 - [ ] Add full-text search queries for fast filtering and global search.
 - [ ] Add index health/rebuild commands.
@@ -167,6 +196,7 @@ These are the main files to migrate first:
 ### Phase 5: Frontend Data Migration
 
 - [ ] Introduce local repository-backed hooks under `src/features/documents/`.
+- [ ] Keep frontend state and components wired against shared ports instead of storage-specific adapters.
 - [ ] Keep TanStack Query, but swap HTTP query functions for local repository calls.
 - [ ] Replace `useNotes` with a local documents hook.
 - [ ] Replace `useFolders` with a folder tree hook backed by the vault/index.
@@ -243,6 +273,7 @@ Run these after changes to the Rust vault layer:
 - Path-based identity alone is fragile; renames need a stable document ID strategy.
 - External file edits must not silently desync the UI from disk.
 - Template rendering must degrade cleanly when template definitions are missing.
+- A fake “generic storage layer” can become over-abstracted if local and remote modes are treated as interchangeable too early.
 
 ## Deferred For Later
 

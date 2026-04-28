@@ -7,6 +7,9 @@ import VaultWorkspace from './VaultWorkspace'
 export default function VaultBootstrap() {
   const {
     status,
+    indexStatus,
+    indexError,
+    currentIndex,
     error,
     currentVault,
     loadRecentVault,
@@ -79,25 +82,38 @@ export default function VaultBootstrap() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Cosa c’è già</p>
-                <ul className="mt-3 space-y-2 text-sm text-stone-200">
-                  <li>Selezione cartella locale</li>
-                  <li>Scan ricorsivo di cartelle e file `.md`</li>
-                  <li>Sidebar guidata dal filesystem</li>
-                  <li>Preview documenti in lettura</li>
-                </ul>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Cosa c’è già</p>
+              <ul className="mt-3 space-y-2 text-sm text-stone-200">
+                <li>Selezione cartella locale</li>
+                <li>Scan ricorsivo di cartelle e file `.md`</li>
+                <li>Sidebar guidata dal filesystem</li>
+                <li>Preview documenti in lettura</li>
+                <li>Indice SQLite locale iniziale</li>
+              </ul>
+            </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Step successivi</p>
-                <ul className="mt-3 space-y-2 text-sm text-stone-200">
-                  <li>Repository locale completo</li>
-                  <li>Indice SQLite</li>
-                  <li>Round-trip TipTap/Markdown</li>
-                  <li>Template esterni al vault</li>
-                </ul>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Indice locale</p>
+              <div className="mt-3 space-y-2 text-sm text-stone-200">
+                <p>
+                  {indexStatus === 'indexing' && 'Indicizzazione SQLite in corso…'}
+                  {indexStatus === 'ready' && currentIndex && `${currentIndex.indexedDocuments} documenti e ${currentIndex.indexedFolders} cartelle indicizzati`}
+                  {indexStatus === 'error' && (indexError ?? 'Indicizzazione SQLite fallita')}
+                  {indexStatus === 'idle' && 'Indice non ancora avviato'}
+                </p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Step successivi</p>
+              <ul className="mt-3 space-y-2 text-sm text-stone-200">
+                <li>Ricerca e query sopra l’indice</li>
+                <li>Watcher e re-index incrementale</li>
+                <li>Rename/move in-app</li>
+                <li>Template esterni al vault</li>
+              </ul>
+            </div>
             </div>
           </aside>
         </div>

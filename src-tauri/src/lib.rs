@@ -1,10 +1,13 @@
+use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::{
   collections::HashMap,
   fs,
+  hash::{DefaultHasher, Hash, Hasher},
   path::{Path, PathBuf},
   time::SystemTime,
 };
+use tauri::{AppHandle, Manager};
 use walkdir::WalkDir;
 
 #[derive(Clone, Serialize)]
@@ -50,6 +53,16 @@ struct VaultDocument {
   body: String,
   raw_content: String,
   updated_at: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LocalIndexStats {
+  database_path: String,
+  root_path: String,
+  indexed_documents: usize,
+  indexed_folders: usize,
+  indexed_at: String,
 }
 
 #[derive(Clone)]
@@ -269,6 +282,12 @@ fn move_document(
   read_document(path_to_string(&destination_path))
 }
 
+#[tauri::command]
+fn rebuild_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexStats, String> {
+  let database_path = local_index_database_path(&app, &root_path)?;
+  rebuild_local_index_at_path(&database_path, &root_path)
+}
+
 fn build_document_summary(
   path: &Path,
   root_path: &str,
@@ -287,6 +306,245 @@ fn build_document_summary(
     excerpt: build_excerpt(&body),
     updated_at: read_modified_timestamp(path),
   })
+}
+
+fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<LocalIndexStats, String> {
+  let snapshot = scan_vault(root_path.to_string())?;
+  let indexed_at = current_timestamp_string()?;
+
+  if let Some(parent) = database_path.parent() {
+    fs::create_dir_all(parent).map_err(|error| {
+      format!(
+        "Impossibile creare la cartella del database indice `{}`: {error}",
+        parent.display()
+      )
+    })?;
+  }
+
+  let connection = Connection::open(database_path).map_err(|error| {
+    format!(
+      "Impossibile aprire il database indice `{}`: {error}",
+      database_path.display()
+    )
+  })?;
+
+  initialize_local_index_schema(&connection)?;
+
+  connection
+    .execute("DELETE FROM documents WHERE root_path = ?1", params![snapshot.root_path.as_str()])
+    .map_err(|error| format!("Impossibile svuotare i documenti indicizzati: {error}"))?;
+  connection
+    .execute("DELETE FROM folders WHERE root_path = ?1", params![snapshot.root_path.as_str()])
+    .map_err(|error| format!("Impossibile svuotare le cartelle indicizzate: {error}"))?;
+  connection
+    .execute("DELETE FROM document_links WHERE root_path = ?1", params![snapshot.root_path.as_str()])
+    .map_err(|error| format!("Impossibile svuotare i link indicizzati: {error}"))?;
+  connection
+    .execute("DELETE FROM document_tags WHERE root_path = ?1", params![snapshot.root_path.as_str()])
+    .map_err(|error| format!("Impossibile svuotare i tag indicizzati: {error}"))?;
+  connection
+    .execute("DELETE FROM search_fts WHERE root_path = ?1", params![snapshot.root_path.as_str()])
+    .map_err(|error| format!("Impossibile svuotare il full-text index: {error}"))?;
+
+  let transaction = connection
+    .unchecked_transaction()
+    .map_err(|error| format!("Impossibile iniziare la transazione indice: {error}"))?;
+
+  {
+    let mut folder_statement = transaction
+      .prepare(
+        "INSERT INTO folders (path, root_path, name, parent_path, document_count, indexed_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+      )
+      .map_err(|error| format!("Impossibile preparare l'inserimento cartelle: {error}"))?;
+
+    for folder in flatten_folder_nodes(&snapshot.folders) {
+      folder_statement
+        .execute(params![
+          folder.path.as_str(),
+          snapshot.root_path.as_str(),
+          folder.name.as_str(),
+          folder.parent_path.as_deref(),
+          folder.document_count as i64,
+          indexed_at.as_str(),
+        ])
+        .map_err(|error| format!("Impossibile indicizzare la cartella `{}`: {error}", folder.path))?;
+    }
+  }
+
+  {
+    let mut document_statement = transaction
+      .prepare(
+        "INSERT INTO documents (
+          path, root_path, name, title, parent_path, excerpt, updated_at, indexed_at, content_hash
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+      )
+      .map_err(|error| format!("Impossibile preparare l'inserimento documenti: {error}"))?;
+
+    for document in &snapshot.documents {
+      let content_hash = build_document_index_hash(document);
+      document_statement
+        .execute(params![
+          document.path.as_str(),
+          snapshot.root_path.as_str(),
+          document.name.as_str(),
+          document.title.as_str(),
+          document.parent_path.as_deref(),
+          document.excerpt.as_str(),
+          document.updated_at.as_deref(),
+          indexed_at.as_str(),
+          content_hash.as_str(),
+        ])
+        .map_err(|error| format!("Impossibile indicizzare il documento `{}`: {error}", document.path))?;
+    }
+  }
+
+  {
+    let mut search_statement = transaction
+      .prepare(
+        "INSERT INTO search_fts (path, title, excerpt, root_path)
+         VALUES (?1, ?2, ?3, ?4)",
+      )
+      .map_err(|error| format!("Impossibile preparare l'inserimento search_fts: {error}"))?;
+
+    for document in &snapshot.documents {
+      search_statement
+        .execute(params![
+          document.path.as_str(),
+          document.title.as_str(),
+          document.excerpt.as_str(),
+          snapshot.root_path.as_str(),
+        ])
+        .map_err(|error| format!("Impossibile indicizzare il testo di `{}`: {error}", document.path))?;
+    }
+  }
+
+  transaction
+    .commit()
+    .map_err(|error| format!("Impossibile confermare l'indicizzazione: {error}"))?;
+
+  Ok(LocalIndexStats {
+    database_path: path_to_string(database_path),
+    root_path: snapshot.root_path,
+    indexed_documents: snapshot.documents.len(),
+    indexed_folders: count_folder_nodes(&snapshot.folders),
+    indexed_at,
+  })
+}
+
+fn initialize_local_index_schema(connection: &Connection) -> Result<(), String> {
+  connection.execute_batch(
+    "
+      CREATE TABLE IF NOT EXISTS documents (
+        path TEXT PRIMARY KEY,
+        root_path TEXT NOT NULL,
+        name TEXT NOT NULL,
+        title TEXT NOT NULL,
+        parent_path TEXT,
+        excerpt TEXT NOT NULL,
+        updated_at TEXT,
+        indexed_at TEXT NOT NULL,
+        content_hash TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_documents_root_path ON documents(root_path);
+      CREATE INDEX IF NOT EXISTS idx_documents_parent_path ON documents(parent_path);
+      CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON documents(updated_at);
+
+      CREATE TABLE IF NOT EXISTS document_links (
+        source_path TEXT NOT NULL,
+        target_path TEXT NOT NULL,
+        root_path TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_document_links_root_path ON document_links(root_path);
+      CREATE INDEX IF NOT EXISTS idx_document_links_source_path ON document_links(source_path);
+
+      CREATE TABLE IF NOT EXISTS folders (
+        path TEXT PRIMARY KEY,
+        root_path TEXT NOT NULL,
+        name TEXT NOT NULL,
+        parent_path TEXT,
+        document_count INTEGER NOT NULL,
+        indexed_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_folders_root_path ON folders(root_path);
+      CREATE INDEX IF NOT EXISTS idx_folders_parent_path ON folders(parent_path);
+
+      CREATE TABLE IF NOT EXISTS document_tags (
+        document_path TEXT NOT NULL,
+        tag TEXT NOT NULL,
+        root_path TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_document_tags_root_path ON document_tags(root_path);
+      CREATE INDEX IF NOT EXISTS idx_document_tags_document_path ON document_tags(document_path);
+
+      CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts5(
+        path UNINDEXED,
+        title,
+        excerpt,
+        root_path UNINDEXED
+      );
+    ",
+  )
+  .map_err(|error| format!("Impossibile inizializzare lo schema SQLite: {error}"))
+}
+
+fn local_index_database_path(app: &AppHandle, root_path: &str) -> Result<PathBuf, String> {
+  let app_data_dir = app
+    .path()
+    .app_local_data_dir()
+    .map_err(|error| format!("Impossibile risolvere la cartella dati dell'app: {error}"))?;
+
+  let root_hash = hash_string(root_path);
+  Ok(app_data_dir.join("index").join(format!("vault-{root_hash}.sqlite")))
+}
+
+fn flatten_folder_nodes(nodes: &[VaultFolderNode]) -> Vec<&VaultFolderNode> {
+  let mut flattened = Vec::new();
+
+  for node in nodes {
+    flattened.push(node);
+    flattened.extend(flatten_folder_nodes(&node.children));
+  }
+
+  flattened
+}
+
+fn count_folder_nodes(nodes: &[VaultFolderNode]) -> usize {
+  nodes
+    .iter()
+    .map(|node| 1 + count_folder_nodes(&node.children))
+    .sum()
+}
+
+fn build_document_index_hash(document: &VaultDocumentSummary) -> String {
+  hash_string(&format!(
+    "{}|{}|{}|{}|{}",
+    document.path,
+    document.title,
+    document.excerpt,
+    document.parent_path.as_deref().unwrap_or(""),
+    document.updated_at.as_deref().unwrap_or("")
+  ))
+}
+
+fn hash_string(value: &str) -> String {
+  let mut hasher = DefaultHasher::new();
+  value.hash(&mut hasher);
+  format!("{:016x}", hasher.finish())
+}
+
+fn current_timestamp_string() -> Result<String, String> {
+  Ok(
+    SystemTime::now()
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .map_err(|error| format!("Impossibile leggere l'orologio di sistema: {error}"))?
+      .as_secs()
+      .to_string(),
+  )
 }
 
 fn build_folder_tree(
@@ -483,7 +741,8 @@ pub fn run() {
       create_document,
       save_document,
       delete_document,
-      move_document
+      move_document,
+      rebuild_local_index
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application")
@@ -678,5 +937,36 @@ Great soundtrack and visuals.\n",
 
     delete_document(moved.path.clone()).expect("delete_document should succeed");
     assert!(!PathBuf::from(moved.path).exists());
+  }
+
+  #[test]
+  fn rebuild_local_index_creates_sqlite_index_for_vault() {
+    let vault = create_temp_vault();
+    let database_path = vault.join(".life-os-index.sqlite");
+
+    write_file(&vault.join("Root Note.md"), "# Root Note\n\nBody.");
+    write_file(&vault.join("Projects").join("Roadmap.md"), "# Roadmap\n\nNested body.");
+
+    let stats = rebuild_local_index_at_path(&database_path, &path_to_string(&vault))
+      .expect("local index rebuild should succeed");
+
+    assert_eq!(stats.indexed_documents, 2);
+    assert_eq!(stats.indexed_folders, 1);
+    assert!(database_path.exists());
+
+    let connection = Connection::open(&database_path).expect("should reopen sqlite db");
+    let document_count: i64 = connection
+      .query_row("SELECT COUNT(*) FROM documents", [], |row| row.get(0))
+      .expect("should count indexed documents");
+    let folder_count: i64 = connection
+      .query_row("SELECT COUNT(*) FROM folders", [], |row| row.get(0))
+      .expect("should count indexed folders");
+    let fts_count: i64 = connection
+      .query_row("SELECT COUNT(*) FROM search_fts", [], |row| row.get(0))
+      .expect("should count indexed search rows");
+
+    assert_eq!(document_count, 2);
+    assert_eq!(folder_count, 1);
+    assert_eq!(fts_count, 2);
   }
 }

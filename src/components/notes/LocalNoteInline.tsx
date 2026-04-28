@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import NoteEditor from '../editor/NoteEditor'
+import { activeDocumentRepository } from '../../core/storage/activeStorage'
 import { formatDate } from '../../lib/utils'
 import { useVaultStore } from '../../stores/vaultStore'
-import { vaultRepository } from '../../core/vault/vaultRepository'
 import {
   markdownToTipTapDocument,
   mergeRawVaultDocument,
@@ -43,7 +43,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
     setSaveError(null)
 
     try {
-      const loadedDocument = await vaultRepository.readDocument(summary.path)
+      const loadedDocument = await activeDocumentRepository.readDocument(summary.path)
       const rawParts = splitRawVaultDocument(loadedDocument.rawContent)
 
       setFrontmatter(rawParts.frontmatter)
