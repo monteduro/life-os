@@ -1,17 +1,17 @@
-# LIFE OS
+# lifeOS
 
-![LIFE OS screenshot](./screenshot.png)
+![lifeOS screenshot](./screenshot.png)
 
-> WORK IN PROGRESS
+> 🚧 WORK IN PROGRESS 🚧
 >
 > This project started only a few days ago.
 > The direction is real, but the product is still very early, unstable, and changing fast.
 
-LIFE OS is a local-first knowledge and personal operating system evolving toward a desktop-first notes and tracking app.
+lifeOS is a local-first knowledge and personal operating system evolving toward a desktop-first notes and tracking app.
 
 ## Product Direction
 
-LIFE OS is meant to go beyond plain note-taking:
+lifeOS is meant to go beyond plain note-taking:
 
 - structured templates
 - personal databases like expenses, films, and other tracked entities

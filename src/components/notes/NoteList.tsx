@@ -136,7 +136,7 @@ export default function NoteList({ folderId = null }: NoteListProps) {
               }}
               className="text-[0.8125rem] font-medium px-3.5 py-1.5 rounded-lg bg-stone-900 text-stone-50 shadow-sm hover:bg-stone-800 transition-colors"
             >
-              Nuova nota
+              New note
             </button>
           </div>
           <p className="mt-4 text-sm text-stone-500 leading-6">
