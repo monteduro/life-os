@@ -11,6 +11,7 @@ import { useNavigationStore } from './stores/navigationStore'
 function App() {
   const {
     currentVault,
+    refreshIndexHealth,
     status,
     refreshVaultSnapshot,
     searchQuery,
@@ -35,6 +36,7 @@ function App() {
       }
 
       await refreshVaultSnapshot()
+      await refreshIndexHealth()
 
       if (searchQuery.trim()) {
         await runSearch(searchQuery)
@@ -45,7 +47,7 @@ function App() {
       isMounted = false
       void unlistenPromise.then((unlisten) => unlisten())
     }
-  }, [currentVault, refreshVaultSnapshot, runSearch, searchQuery])
+  }, [currentVault, refreshIndexHealth, refreshVaultSnapshot, runSearch, searchQuery])
 
   if (status === 'ready' && currentVault) {
     return (

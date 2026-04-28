@@ -279,6 +279,7 @@ These are the main files to migrate first:
 - [ ] Remove unused auth UI and API code once the local flow is stable.
 - [ ] Remove backend-specific config that is no longer part of the desktop app path.
 - [ ] Update the project README to reflect the new product architecture.
+- [ ] Add and maintain a real `CHANGELOG.md` as the project starts shipping frequent UX and architecture slices.
 - [ ] Add developer setup docs for Tauri, Rust prerequisites, and local app data paths.
 - [ ] Revisit Capacitor/mobile only after desktop vault flow is stable.
 

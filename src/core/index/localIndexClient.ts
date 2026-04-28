@@ -20,6 +20,11 @@ export async function rebuildLocalIndex(rootPath: string) {
   return invoke<LocalIndexStats>('rebuild_local_index', { rootPath })
 }
 
+export async function inspectLocalIndex(rootPath: string) {
+  ensureDesktopShell()
+  return invoke<LocalIndexStats>('inspect_local_index', { rootPath })
+}
+
 export async function searchLocalIndex(rootPath: string, query: string) {
   ensureDesktopShell()
   return invoke<VaultDocumentSummary[]>('search_local_index', { rootPath, query })

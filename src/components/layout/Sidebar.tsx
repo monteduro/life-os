@@ -12,8 +12,9 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Folder as FolderIcon, FolderPlus } from 'lucide-react'
+import { Database, Folder as FolderIcon, FolderPlus } from 'lucide-react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
+import type { LocalIndexStats } from '../../core/index/types'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useVaultStore } from '../../stores/vaultStore'
 import { mapVaultFoldersToAppFolders } from '../../core/vault/adapters'
@@ -27,7 +28,7 @@ import type { Folder } from '../../types'
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
-  const { currentVault, createFolder, moveFolder } = useVaultStore()
+  const { currentVault, createFolder, currentIndex, indexError, indexStatus, moveFolder, rebuildIndex } = useVaultStore()
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [activeDragFolderId, setActiveDragFolderId] = useState<string | null>(null)
   const [overFolderId, setOverFolderId] = useState<string | null>(null)
@@ -105,6 +106,10 @@ export default function Sidebar() {
           selectedFolderId={selectedFolderId}
           selectInbox={selectInbox}
           onCreateFolder={() => setCreateFolderOpen(true)}
+          currentIndex={currentIndex}
+          indexError={indexError}
+          indexStatus={indexStatus}
+          onRebuildIndex={() => void rebuildIndex()}
           sensors={sensors}
           activeDragFolderId={activeDragFolderId}
           pendingMoveFolderId={pendingMoveFolderId}
@@ -131,6 +136,10 @@ export default function Sidebar() {
           selectedFolderId={selectedFolderId}
           selectInbox={selectInbox}
           onCreateFolder={() => setCreateFolderOpen(true)}
+          currentIndex={currentIndex}
+          indexError={indexError}
+          indexStatus={indexStatus}
+          onRebuildIndex={() => void rebuildIndex()}
           sensors={sensors}
           activeDragFolderId={activeDragFolderId}
           pendingMoveFolderId={pendingMoveFolderId}
@@ -185,6 +194,10 @@ interface SidebarContentProps {
   selectedFolderId: string | null
   selectInbox: () => void
   onCreateFolder: () => void
+  currentIndex: LocalIndexStats | null
+  indexError: string | null
+  indexStatus: 'idle' | 'indexing' | 'ready' | 'error'
+  onRebuildIndex: () => void
   sensors: ReturnType<typeof useSensors>
   activeDragFolderId: string | null
   pendingMoveFolderId: string | null
@@ -201,6 +214,10 @@ function SidebarContent({
   selectedFolderId,
   selectInbox,
   onCreateFolder,
+  currentIndex,
+  indexError,
+  indexStatus,
+  onRebuildIndex,
   sensors,
   activeDragFolderId,
   pendingMoveFolderId,
@@ -259,7 +276,7 @@ function SidebarContent({
         onDragEnd={onDragEnd}
       >
       <RootDropZone>
-      <nav className="flex-1 overflow-y-auto px-2 py-3 flex flex-col">
+      <nav className="flex flex-1 flex-col overflow-y-auto px-2 py-3">
         {/* Inbox */}
         <div className="mb-1">
           <SidebarNavItem
@@ -281,6 +298,37 @@ function SidebarContent({
         />
       </nav>
       </RootDropZone>
+      <div className="shrink-0 border-t border-stone-100 px-3 py-3">
+        <Tooltip
+          content={
+            indexStatus === 'error'
+              ? (indexError ?? 'Index error. Rebuild local index.')
+              : currentIndex
+                ? `Rebuild index (${currentIndex.indexedDocuments} docs, ${currentIndex.indexedFolders} folders)`
+                : 'Rebuild local index'
+          }
+        >
+          <button
+            type="button"
+            onClick={onRebuildIndex}
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-800"
+            aria-label="Rebuild index"
+          >
+            <Database className={`h-4 w-4 ${indexStatus === 'indexing' ? 'animate-spin' : ''}`} />
+            <span
+              className={`absolute bottom-1.5 right-1.5 h-2 w-2 rounded-full ring-2 ring-white ${
+                indexStatus === 'error'
+                  ? 'bg-red-400'
+                  : indexStatus === 'indexing'
+                    ? 'bg-amber-400'
+                    : indexStatus === 'ready'
+                      ? 'bg-emerald-400'
+                      : 'bg-stone-300'
+              }`}
+            />
+          </button>
+        </Tooltip>
+      </div>
       <DragOverlay>
         {activeDragFolderName ? <FolderDragPreview name={activeDragFolderName} /> : null}
       </DragOverlay>

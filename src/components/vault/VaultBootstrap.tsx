@@ -102,6 +102,11 @@ export default function VaultBootstrap() {
                   {indexStatus === 'error' && (indexError ?? 'Indicizzazione SQLite fallita')}
                   {indexStatus === 'idle' && 'Indice non ancora avviato'}
                 </p>
+                {currentIndex?.databaseExists && currentIndex.indexedAt && (
+                  <p className="text-xs text-stone-400">
+                    Last rebuild: {new Date(Number(currentIndex.indexedAt) * 1000).toLocaleString()}
+                  </p>
+                )}
               </div>
             </div>
 

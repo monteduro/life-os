@@ -4,4 +4,5 @@ export interface LocalIndexStats {
   indexedDocuments: number
   indexedFolders: number
   indexedAt: string
+  databaseExists: boolean
 }

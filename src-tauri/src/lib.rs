@@ -74,6 +74,7 @@ struct LocalIndexStats {
   indexed_documents: usize,
   indexed_folders: usize,
   indexed_at: String,
+  database_exists: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -400,6 +401,65 @@ fn rebuild_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexSt
 }
 
 #[tauri::command]
+fn inspect_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexStats, String> {
+  let database_path = local_index_database_path(&app, &root_path)?;
+
+  if !database_path.exists() {
+    return Ok(LocalIndexStats {
+      database_path: path_to_string(&database_path),
+      root_path,
+      indexed_documents: 0,
+      indexed_folders: 0,
+      indexed_at: String::new(),
+      database_exists: false,
+    });
+  }
+
+  let connection = Connection::open(&database_path).map_err(|error| {
+    format!(
+      "Impossibile aprire il database indice `{}`: {error}",
+      database_path.display()
+    )
+  })?;
+
+  initialize_local_index_schema(&connection)?;
+
+  let indexed_documents = connection
+    .query_row(
+      "SELECT COUNT(*) FROM documents WHERE root_path = ?1",
+      params![root_path.as_str()],
+      |row| row.get::<_, i64>(0),
+    )
+    .map_err(|error| format!("Impossibile contare i documenti indicizzati: {error}"))? as usize;
+
+  let indexed_folders = connection
+    .query_row(
+      "SELECT COUNT(*) FROM folders WHERE root_path = ?1",
+      params![root_path.as_str()],
+      |row| row.get::<_, i64>(0),
+    )
+    .map_err(|error| format!("Impossibile contare le cartelle indicizzate: {error}"))? as usize;
+
+  let indexed_at = connection
+    .query_row(
+      "SELECT MAX(indexed_at) FROM documents WHERE root_path = ?1",
+      params![root_path.as_str()],
+      |row| row.get::<_, Option<String>>(0),
+    )
+    .map_err(|error| format!("Impossibile leggere l'ultimo rebuild dell'indice: {error}"))?
+    .unwrap_or_default();
+
+  Ok(LocalIndexStats {
+    database_path: path_to_string(&database_path),
+    root_path,
+    indexed_documents,
+    indexed_folders,
+    indexed_at,
+    database_exists: true,
+  })
+}
+
+#[tauri::command]
 fn search_local_index(
   app: AppHandle,
   root_path: String,
@@ -651,6 +711,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
     indexed_documents: snapshot.documents.len(),
     indexed_folders: count_folder_nodes(&snapshot.folders),
     indexed_at,
+    database_exists: true,
   })
 }
 
@@ -1192,6 +1253,7 @@ pub fn run() {
       rename_folder,
       move_folder,
       rebuild_local_index,
+      inspect_local_index,
       search_local_index,
       start_vault_watcher
     ])
@@ -1483,9 +1545,57 @@ Great soundtrack and visuals.\n",
       .query_row("SELECT COUNT(*) FROM search_fts", [], |row| row.get(0))
       .expect("should count indexed search rows");
 
+    assert!(stats.database_exists);
+    assert!(!stats.indexed_at.is_empty());
+    assert_eq!(path_to_string(&database_path), stats.database_path);
+
     assert_eq!(document_count, 2);
     assert_eq!(folder_count, 1);
     assert_eq!(fts_count, 2);
+  }
+
+  #[test]
+  fn inspect_local_index_reads_existing_database_counts() {
+    let vault = create_temp_vault();
+    let database_path = vault.join(".life-os-index.sqlite");
+    let canonical_root_path = path_to_string(&fs::canonicalize(&vault).expect("should canonicalize vault"));
+
+    write_file(&vault.join("Root Note.md"), "# Root Note\n\nBody.");
+    write_file(&vault.join("Projects").join("Roadmap.md"), "# Roadmap\n\nNested body.");
+
+    rebuild_local_index_at_path(&database_path, &canonical_root_path)
+      .expect("local index rebuild should succeed");
+
+    let connection = Connection::open(&database_path).expect("should reopen sqlite db");
+    initialize_local_index_schema(&connection).expect("schema init should succeed");
+
+    let indexed_documents: i64 = connection
+      .query_row(
+        "SELECT COUNT(*) FROM documents WHERE root_path = ?1",
+        params![canonical_root_path.as_str()],
+        |row| row.get(0),
+      )
+      .expect("should count indexed documents");
+
+    let indexed_folders: i64 = connection
+      .query_row(
+        "SELECT COUNT(*) FROM folders WHERE root_path = ?1",
+        params![canonical_root_path.as_str()],
+        |row| row.get(0),
+      )
+      .expect("should count indexed folders");
+
+    let indexed_at: Option<String> = connection
+      .query_row(
+        "SELECT MAX(indexed_at) FROM documents WHERE root_path = ?1",
+        params![canonical_root_path.as_str()],
+        |row| row.get(0),
+      )
+      .expect("should read max indexed_at");
+
+    assert_eq!(indexed_documents, 2);
+    assert_eq!(indexed_folders, 1);
+    assert!(indexed_at.is_some());
   }
 
   #[test]

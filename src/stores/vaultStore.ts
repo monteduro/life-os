@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import { rebuildLocalIndex, searchLocalIndex } from '../core/index/localIndexClient'
+import { inspectLocalIndex, rebuildLocalIndex, searchLocalIndex } from '../core/index/localIndexClient'
 import type { LocalIndexStats } from '../core/index/types'
 import { useNavigationStore } from './navigationStore'
 import { pickVaultDirectory, startVaultWatcher } from '../core/vault/tauriVaultClient'
@@ -32,6 +32,8 @@ interface VaultState {
   currentIndex: LocalIndexStats | null
   searchQuery: string
   searchResults: VaultDocumentSummary[]
+  rebuildIndex: () => Promise<void>
+  refreshIndexHealth: () => Promise<void>
   loadRecentVault: () => Promise<void>
   openVault: () => Promise<void>
   loadVault: (rootPath: string) => Promise<void>
@@ -57,6 +59,10 @@ function persistRecentVaultPath(path: string) {
 
 function readRecentVaultPath() {
   return localStorage.getItem(RECENT_VAULT_PATH_KEY)
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
 async function refreshCurrentVaultSnapshot() {
@@ -85,6 +91,66 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   currentIndex: null,
   searchQuery: '',
   searchResults: [],
+
+  async rebuildIndex() {
+    const rootPath = get().currentVault?.rootPath
+    if (!rootPath) {
+      return
+    }
+
+    set({
+      indexStatus: 'indexing',
+      indexError: null,
+    })
+
+    try {
+      const startedAt = Date.now()
+      const indexStats = await rebuildLocalIndex(rootPath)
+      const elapsed = Date.now() - startedAt
+      if (elapsed < 450) {
+        await delay(450 - elapsed)
+      }
+      set({
+        currentIndex: indexStats,
+        indexStatus: 'ready',
+        indexError: null,
+      })
+
+      if (get().searchQuery.trim()) {
+        await get().runSearch(get().searchQuery)
+      }
+    } catch (error) {
+      set({
+        indexStatus: 'error',
+        indexError: error instanceof Error ? error.message : 'Indicizzazione SQLite fallita.',
+      })
+    }
+  },
+
+  async refreshIndexHealth() {
+    const rootPath = get().currentVault?.rootPath
+    if (!rootPath) {
+      return
+    }
+
+    try {
+      const indexStats = await inspectLocalIndex(rootPath)
+      set((state) => ({
+        currentIndex: indexStats,
+        indexStatus:
+          state.indexStatus === 'error'
+            ? 'error'
+            : indexStats.databaseExists
+              ? 'ready'
+              : 'idle',
+      }))
+    } catch (error) {
+      set({
+        indexStatus: 'error',
+        indexError: error instanceof Error ? error.message : 'Impossibile leggere lo stato dell’indice locale.',
+      })
+    }
+  },
 
   async loadRecentVault() {
     const recentPath = readRecentVaultPath()
@@ -223,6 +289,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         name,
       })
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
       set({ error: null })
       return folderPath
     } catch (error) {
@@ -246,6 +313,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       const renamedPath = await activeWorkspaceRepository.renameFolder({ path, name })
       await propagateFolderPathChange(rootPath, path, renamedPath)
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
       if (get().searchQuery.trim()) {
         await get().runSearch(get().searchQuery)
       }
@@ -275,6 +343,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       })
       await propagateFolderPathChange(rootPath, path, movedPath)
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
       if (get().searchQuery.trim()) {
         await get().runSearch(get().searchQuery)
       }
@@ -302,6 +371,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         title,
       })
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
       await get().selectDocument(document.path)
       return document
     } catch (error) {
@@ -326,6 +396,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         fileName,
       })
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
       if (get().searchQuery.trim()) {
         await get().runSearch(get().searchQuery)
       }
@@ -347,6 +418,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     try {
       const document = await activeDocumentRepository.saveDocument({ path, content })
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
       set({
         selectedDocument: document,
         selectedDocumentPath: document.path,
@@ -365,6 +437,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     try {
       await activeDocumentRepository.deleteDocument(path)
       await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
 
       const selectedPath = get().selectedDocumentPath
       if (selectedPath === path) {
