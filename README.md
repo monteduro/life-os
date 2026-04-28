@@ -2,6 +2,11 @@
 
 ![LIFE OS screenshot](./screenshot.png)
 
+> WORK IN PROGRESS
+>
+> This project started only a few days ago.
+> The direction is real, but the product is still very early, unstable, and changing fast.
+
 LIFE OS is a local-first knowledge and personal operating system evolving toward a desktop-first notes and tracking app.
 
 ## Product Direction
