@@ -36,6 +36,8 @@ interface VaultState {
   rescanVault: () => Promise<void>
   refreshVaultSnapshot: () => Promise<void>
   selectDocument: (path: string | null) => Promise<void>
+  createFolder: (parentPath: string | null, name: string) => Promise<string | null>
+  renameFolder: (path: string, name: string) => Promise<string | null>
   createDocument: (parentPath: string | null, title?: string) => Promise<VaultDocument | null>
   moveDocument: (path: string, targetFolderPath: string | null, fileName?: string) => Promise<VaultDocument | null>
   saveDocument: (path: string, content: string) => Promise<VaultDocument | null>
@@ -201,6 +203,44 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         isReadingDocument: false,
         error: error instanceof Error ? error.message : 'Impossibile leggere il file selezionato.',
       })
+    }
+  },
+
+  async createFolder(parentPath, name) {
+    const rootPath = get().currentVault?.rootPath
+    if (!rootPath) {
+      set({ error: 'Nessun vault aperto.' })
+      return null
+    }
+
+    try {
+      const folderPath = await activeWorkspaceRepository.createFolder({
+        rootPath,
+        parentPath,
+        name,
+      })
+      await refreshCurrentVaultSnapshot()
+      set({ error: null })
+      return folderPath
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Impossibile creare la cartella.',
+      })
+      return null
+    }
+  },
+
+  async renameFolder(path, name) {
+    try {
+      const renamedPath = await activeWorkspaceRepository.renameFolder({ path, name })
+      await refreshCurrentVaultSnapshot()
+      set({ error: null })
+      return renamedPath
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Impossibile rinominare la cartella.',
+      })
+      return null
     }
   },
 

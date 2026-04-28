@@ -1,7 +1,10 @@
+import { useState } from 'react'
+import { FolderPlus } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useVaultStore } from '../../stores/vaultStore'
 import { mapVaultFoldersToAppFolders } from '../../core/vault/adapters'
 import { getIcon } from '../../lib/iconMap'
+import TextPromptDialog from '../Form/TextPromptDialog'
 import SidebarNavItem from './SidebarNavItem'
 import FolderTree from './FolderTree'
 import type { Folder } from '../../types'
@@ -9,15 +12,27 @@ import type { Folder } from '../../types'
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
-  const { currentVault } = useVaultStore()
+  const { currentVault, createFolder } = useVaultStore()
+  const [createFolderOpen, setCreateFolderOpen] = useState(false)
 
-  const { selectedFolderId, sidebarOpen, selectInbox } = useNavigationStore()
+  const { selectedFolderId, sidebarOpen, selectFolder, selectInbox } = useNavigationStore()
 
   const folderTree = currentVault ? mapVaultFoldersToAppFolders(currentVault.folders) : []
 
   const inboxCount = currentVault
     ? currentVault.documents.filter((document) => document.parentPath === null).length
     : 0
+
+  const handleCreateFolder = async (name: string) => {
+    if (!currentVault) return
+
+    const folderPath = await createFolder(selectedFolderId, name.trim())
+    if (!folderPath) return
+
+    const folderName = folderPath.split('/').pop() ?? name.trim()
+    selectFolder(folderPath, folderName)
+    setCreateFolderOpen(false)
+  }
 
   return (
     <>
@@ -34,6 +49,7 @@ export default function Sidebar() {
           inboxCount={inboxCount}
           selectedFolderId={selectedFolderId}
           selectInbox={selectInbox}
+          onCreateFolder={() => setCreateFolderOpen(true)}
         />
       </aside>
 
@@ -51,8 +67,20 @@ export default function Sidebar() {
           inboxCount={inboxCount}
           selectedFolderId={selectedFolderId}
           selectInbox={selectInbox}
+          onCreateFolder={() => setCreateFolderOpen(true)}
         />
       </aside>
+
+      <TextPromptDialog
+        open={createFolderOpen}
+        title="Create folder"
+        description={selectedFolderId ? 'The new folder will be created inside the currently selected folder.' : 'The new folder will be created at the vault root.'}
+        placeholder="Folder name"
+        confirmLabel="Create"
+        cancelLabel="Cancel"
+        onCancel={() => setCreateFolderOpen(false)}
+        onConfirm={handleCreateFolder}
+      />
     </>
   )
 }
@@ -64,6 +92,7 @@ interface SidebarContentProps {
   inboxCount: number
   selectedFolderId: string | null
   selectInbox: () => void
+  onCreateFolder: () => void
 }
 
 function SidebarContent({
@@ -71,17 +100,28 @@ function SidebarContent({
   inboxCount,
   selectedFolderId,
   selectInbox,
+  onCreateFolder,
 }: SidebarContentProps) {
   return (
     <>
       {/* Logo */}
       <div
-        className="px-6 flex items-center border-b border-stone-100 shrink-0"
+        className="px-6 flex items-center justify-between border-b border-stone-100 shrink-0"
         style={{ height: 'var(--navbar-height)' }}
       >
         <span className="text-base font-semibold text-stone-800 tracking-tight">
           smart<span className="text-stone-400 font-normal">notes</span>
         </span>
+        <button
+          type="button"
+          onClick={() => {
+            void onCreateFolder()
+          }}
+          className="p-1.5 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+          aria-label="Create folder"
+        >
+          <FolderPlus className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Navigation */}

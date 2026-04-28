@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import NoteEditor from '../editor/NoteEditor'
+import TextPromptDialog from '../Form/TextPromptDialog'
 import { activeDocumentRepository } from '../../core/storage/activeStorage'
 import { formatDate } from '../../lib/utils'
 import { useVaultStore } from '../../stores/vaultStore'
@@ -34,10 +35,12 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [renameFileOpen, setRenameFileOpen] = useState(false)
   const [documentTitle, setDocumentTitle] = useState(summary.title)
   const [frontmatter, setFrontmatter] = useState<string | null>(null)
   const [editorDocument, setEditorDocument] = useState<TipTapDocument>(EMPTY_DOC)
   const [pendingFolderId, setPendingFolderId] = useState<string | null>(summary.parentPath)
+  const [pendingFileName, setPendingFileName] = useState<string>(stripMarkdownExtension(summary.name))
 
   const updatedAt = useMemo(() => normalizeTimestamp(summary.updatedAt), [summary.updatedAt])
 
@@ -54,6 +57,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       setDocumentTitle(loadedDocument.title)
       setIsDirty(false)
       setPendingFolderId(summary.parentPath)
+      setPendingFileName(stripMarkdownExtension(summary.name))
       setEditorKey((value) => value + 1)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Impossibile leggere il documento.')
@@ -84,8 +88,10 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       const savedDocument = await saveDocument(summary.path, rawContent)
 
       if (savedDocument) {
-        if (pendingFolderId !== summary.parentPath) {
-          const movedDocument = await moveDocument(savedDocument.path, pendingFolderId)
+        const shouldMoveOrRename = pendingFolderId !== summary.parentPath || pendingFileName !== stripMarkdownExtension(summary.name)
+
+        if (shouldMoveOrRename) {
+          const movedDocument = await moveDocument(savedDocument.path, pendingFolderId, pendingFileName)
           if (movedDocument && onClose) {
             onClose()
           }
@@ -134,6 +140,30 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
     }
   }, [isDirty, moveDocument, onClose, summary.path])
 
+  const handleRenameFile = useCallback(async (nextName: string) => {
+    if (!nextName.trim() || nextName.trim() === pendingFileName) {
+      setRenameFileOpen(false)
+      return
+    }
+    setSaveError(null)
+
+    if (isDirty) {
+      setPendingFileName(nextName.trim())
+      setRenameFileOpen(false)
+      return
+    }
+
+    try {
+      const movedDocument = await moveDocument(summary.path, summary.parentPath, nextName.trim())
+      if (movedDocument && onClose) {
+        onClose()
+      }
+      setRenameFileOpen(false)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Impossibile rinominare il file.')
+    }
+  }, [isDirty, moveDocument, onClose, pendingFileName, summary.parentPath, summary.path])
+
   if (isLoading) {
     return (
       <div className="group flex flex-col p-4 sm:p-6 rounded-[1.25rem] bg-white border border-stone-100 shadow-soft">
@@ -169,8 +199,8 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
             {documentTitle}
           </span>
           <span className="text-xs text-stone-400">{formatDate(updatedAt)}</span>
-          {isDirty && pendingFolderId !== summary.parentPath && (
-            <span className="text-xs text-amber-600">Folder change will apply on save</span>
+          {isDirty && (pendingFolderId !== summary.parentPath || pendingFileName !== stripMarkdownExtension(summary.name)) && (
+            <span className="text-xs text-amber-600">Path change will apply on save</span>
           )}
           {saveError && (
             <span className="text-xs text-red-500">{saveError}</span>
@@ -178,6 +208,15 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
         </div>
 
         <div className="flex items-center gap-2 flex-wrap ml-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setRenameFileOpen(true)
+            }}
+            className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+          >
+            Rename file
+          </button>
           {isConfirmingDelete ? (
             <div className="flex items-center gap-1">
               <span className="text-[0.8125rem] text-stone-500 mr-1">Eliminare?</span>
@@ -229,6 +268,18 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
           </button>
         </div>
       </div>
+
+      <TextPromptDialog
+        open={renameFileOpen}
+        title="Rename note file"
+        description="Update the Markdown filename on disk."
+        placeholder="File name"
+        initialValue={pendingFileName}
+        confirmLabel="Rename"
+        cancelLabel="Cancel"
+        onCancel={() => setRenameFileOpen(false)}
+        onConfirm={handleRenameFile}
+      />
     </div>
   )
 }
@@ -244,4 +295,8 @@ function normalizeTimestamp(timestamp: string | null) {
   }
 
   return new Date(numericTimestamp * 1000).toISOString()
+}
+
+function stripMarkdownExtension(name: string) {
+  return name.replace(/\.(md|markdown)$/i, '')
 }

@@ -19,7 +19,7 @@ export default function FolderTree({ folders }: FolderTreeProps) {
   }
 
   return (
-    <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5">
       {folders.map((folder) => (
         <FolderItem key={folder.id} folder={folder} />
       ))}

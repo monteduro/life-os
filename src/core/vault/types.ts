@@ -1,9 +1,11 @@
 export type {
+  CreateFolderInput as CreateVaultFolderInput,
   CreateDocumentInput as CreateVaultDocumentInput,
   DocumentRecord as VaultDocument,
   DocumentSummary as VaultDocumentSummary,
   FolderNode as VaultFolderNode,
   MoveDocumentInput as MoveVaultDocumentInput,
+  RenameFolderInput as RenameVaultFolderInput,
   SaveDocumentInput as SaveVaultDocumentInput,
   WorkspaceSnapshot as VaultSnapshot,
 } from '../domain/storage'

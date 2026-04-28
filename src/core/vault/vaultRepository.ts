@@ -1,14 +1,18 @@
 import {
+  createVaultFolder,
   createVaultDocument,
   deleteVaultDocument,
   moveVaultDocument,
   readVaultDocument,
+  renameVaultFolder,
   saveVaultDocument,
   scanVault,
 } from './tauriVaultClient'
 import type {
+  CreateVaultFolderInput,
   CreateVaultDocumentInput,
   MoveVaultDocumentInput,
+  RenameVaultFolderInput,
   SaveVaultDocumentInput,
 } from './types'
 import type { DocumentRepository } from '../ports/documentRepository'
@@ -16,6 +20,8 @@ import type { WorkspaceRepository } from '../ports/workspaceRepository'
 
 export const localMarkdownRepository: WorkspaceRepository & DocumentRepository = {
   scanWorkspace: scanVault,
+  createFolder: (input: CreateVaultFolderInput) => createVaultFolder(input),
+  renameFolder: (input: RenameVaultFolderInput) => renameVaultFolder(input),
   readDocument: readVaultDocument,
   createDocument: (input: CreateVaultDocumentInput) => createVaultDocument(input),
   saveDocument: (input: SaveVaultDocumentInput) => saveVaultDocument(input),

@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
-import { Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Pencil, Search } from 'lucide-react'
 
+import type { FolderNode } from '../../core/domain/storage'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useVaultStore } from '../../stores/vaultStore'
+import TextPromptDialog from '../Form/TextPromptDialog'
 import Sidebar from './Sidebar'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -14,10 +16,12 @@ interface AppLayoutProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { sidebarOpen, setSidebarOpen, selectedFolderName } = useNavigationStore()
+  const [renameFolderOpen, setRenameFolderOpen] = useState(false)
+  const { sidebarOpen, setSidebarOpen, selectedFolderId, selectedFolderName, selectFolder } = useNavigationStore()
   const {
     currentVault,
     openVault,
+    renameFolder,
     rescanVault,
     status,
     searchQuery,
@@ -28,6 +32,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const currentTitle = searchQuery.trim()
     ? 'Search'
     : selectedFolderName ?? currentVault?.rootName ?? 'Vault'
+  const selectedFolderNode = useMemo(
+    () => (currentVault && selectedFolderId ? findFolderNode(currentVault.folders, selectedFolderId) : null),
+    [currentVault, selectedFolderId],
+  )
+  const canRenameSelectedFolder = !searchQuery.trim() && !!selectedFolderNode
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -36,6 +45,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
     return () => window.clearTimeout(handle)
   }, [runSearch, searchQuery])
+
+  const handleRenameFolder = async (nextName: string) => {
+    if (!selectedFolderNode) {
+      return
+    }
+
+    const renamedPath = await renameFolder(selectedFolderNode.path, nextName)
+    if (!renamedPath) {
+      return
+    }
+
+    selectFolder(renamedPath, nextName)
+    setRenameFolderOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 flex">
@@ -81,9 +104,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           {/* Active view title */}
           <div className="lg:ml-0 ml-2 min-w-0">
-            <span className="block text-lg font-semibold text-stone-800 tracking-tight truncate">
-              {currentTitle}
-            </span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="block text-lg font-semibold text-stone-800 tracking-tight truncate">
+                {currentTitle}
+              </span>
+              {canRenameSelectedFolder && (
+                <button
+                  type="button"
+                  onClick={() => setRenameFolderOpen(true)}
+                  className="shrink-0 rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                  aria-label="Rename folder"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
             {currentVault && (
               <span className="hidden sm:block text-xs text-stone-400 truncate">
                 {currentVault.rootName}
@@ -131,6 +166,33 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Content */}
         <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-10">{children}</main>
       </div>
+
+      <TextPromptDialog
+        open={renameFolderOpen}
+        title="Rename folder"
+        description="Update the folder name on disk."
+        placeholder="Folder name"
+        initialValue={selectedFolderNode?.name ?? ''}
+        confirmLabel="Rename"
+        cancelLabel="Cancel"
+        onCancel={() => setRenameFolderOpen(false)}
+        onConfirm={handleRenameFolder}
+      />
     </div>
   )
+}
+
+function findFolderNode(nodes: FolderNode[], targetPath: string): FolderNode | null {
+  for (const node of nodes) {
+    if (node.path === targetPath) {
+      return node
+    }
+
+    const nested = findFolderNode(node.children, targetPath)
+    if (nested) {
+      return nested
+    }
+  }
+
+  return null
 }

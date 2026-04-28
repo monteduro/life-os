@@ -198,6 +198,48 @@ fn scan_vault(root_path: String) -> Result<VaultSnapshot, String> {
 }
 
 #[tauri::command]
+fn create_folder(root_path: String, parent_path: Option<String>, name: String) -> Result<String, String> {
+  let root = resolve_existing_dir(&root_path, "vault")?;
+  let target_parent = match parent_path.as_deref() {
+    Some(path) => resolve_existing_dir(path, "cartella destinazione")?,
+    None => root.clone(),
+  };
+
+  if !target_parent.starts_with(&root) {
+    return Err("La cartella di destinazione non appartiene al vault corrente.".to_string());
+  }
+
+  let safe_name = sanitize_folder_name(&name);
+  let folder_path = build_unique_folder_path(&target_parent, &safe_name);
+
+  fs::create_dir_all(&folder_path)
+    .map_err(|error| format!("Impossibile creare la cartella `{}`: {error}", folder_path.display()))?;
+
+  Ok(path_to_string(&folder_path))
+}
+
+#[tauri::command]
+fn rename_folder(path: String, name: String) -> Result<String, String> {
+  let source_path = resolve_existing_dir(&path, "cartella da rinominare")?;
+  let parent_dir = source_path
+    .parent()
+    .ok_or_else(|| "Impossibile determinare la cartella padre.".to_string())?;
+
+  let safe_name = sanitize_folder_name(&name);
+  let destination_path = build_unique_folder_path(parent_dir, &safe_name);
+
+  fs::rename(&source_path, &destination_path).map_err(|error| {
+    format!(
+      "Impossibile rinominare `{}` in `{}`: {error}",
+      source_path.display(),
+      destination_path.display()
+    )
+  })?;
+
+  Ok(path_to_string(&destination_path))
+}
+
+#[tauri::command]
 fn read_document(path: String) -> Result<VaultDocument, String> {
   let document_path = PathBuf::from(&path);
   let raw_content = fs::read_to_string(&document_path)
@@ -965,6 +1007,15 @@ fn sanitize_file_stem(value: &str) -> String {
   }
 }
 
+fn sanitize_folder_name(value: &str) -> String {
+  let sanitized = sanitize_file_stem(value).trim_end_matches('.').trim().to_string();
+  if sanitized.is_empty() {
+    "Untitled".to_string()
+  } else {
+    sanitized
+  }
+}
+
 fn build_unique_document_path(target_dir: &Path, stem: &str) -> PathBuf {
   let mut counter = 0usize;
 
@@ -976,6 +1027,25 @@ fn build_unique_document_path(target_dir: &Path, stem: &str) -> PathBuf {
     };
 
     let candidate = target_dir.join(file_name);
+    if !candidate.exists() {
+      return candidate;
+    }
+
+    counter += 1;
+  }
+}
+
+fn build_unique_folder_path(target_dir: &Path, name: &str) -> PathBuf {
+  let mut counter = 0usize;
+
+  loop {
+    let folder_name = if counter == 0 {
+      name.to_string()
+    } else {
+      format!("{name} {counter}")
+    };
+
+    let candidate = target_dir.join(folder_name);
     if !candidate.exists() {
       return candidate;
     }
@@ -1072,6 +1142,8 @@ pub fn run() {
       save_document,
       delete_document,
       move_document,
+      create_folder,
+      rename_folder,
       rebuild_local_index,
       search_local_index,
       start_vault_watcher
@@ -1269,6 +1341,34 @@ Great soundtrack and visuals.\n",
 
     delete_document(moved.path.clone()).expect("delete_document should succeed");
     assert!(!PathBuf::from(moved.path).exists());
+  }
+
+  #[test]
+  fn create_folder_creates_unique_directories() {
+    let vault = create_temp_vault();
+
+    let first = create_folder(path_to_string(&vault), None, "Projects".to_string())
+      .expect("first folder creation should succeed");
+    let second = create_folder(path_to_string(&vault), None, "Projects".to_string())
+      .expect("second folder creation should succeed");
+
+    assert!(PathBuf::from(&first).exists());
+    assert!(PathBuf::from(&second).exists());
+    assert_ne!(first, second);
+  }
+
+  #[test]
+  fn rename_folder_renames_directory_on_filesystem() {
+    let vault = create_temp_vault();
+    let source = vault.join("Drafts");
+
+    create_dir_all(&source).expect("failed to create source folder");
+
+    let renamed = rename_folder(path_to_string(&source), "Archive".to_string())
+      .expect("rename_folder should succeed");
+
+    assert!(PathBuf::from(&renamed).exists());
+    assert!(!source.exists());
   }
 
   #[test]

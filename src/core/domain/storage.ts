@@ -27,6 +27,17 @@ export interface WorkspaceSnapshot {
   documentCount: number
 }
 
+export interface CreateFolderInput {
+  rootPath: string
+  parentPath: string | null
+  name: string
+}
+
+export interface RenameFolderInput {
+  path: string
+  name: string
+}
+
 export interface DocumentRecord {
   path: string
   name: string
