@@ -1,6 +1,35 @@
-# Smart Notes
+# LIFE OS
 
-Smart Notes is a local-first notes app evolving toward a desktop-first knowledge and personal tracking tool.
+![LIFE OS screenshot](./screenshot.png)
+
+LIFE OS is a local-first knowledge and personal operating system evolving toward a desktop-first notes and tracking app.
+
+## Product Direction
+
+LIFE OS is meant to go beyond plain note-taking:
+
+- structured templates
+- personal databases like expenses, films, and other tracked entities
+- custom views
+- local-first speed
+- future mobile support
+
+The goal is to build something much richer than a notes app while keeping the product open and user-friendly.
+
+## Architecture In Progress
+
+The product direction is clear, but some core architecture decisions are still open.
+
+Right now I am evaluating tradeoffs between:
+
+- Markdown/filesystem-first
+- local DB-first with Markdown import/export
+- DB-first plus cloud sync later
+- hybrid approaches between those models
+
+If you have strong opinions or relevant experience, feedback is very welcome in this thread:
+
+https://www.reddit.com/r/selfhosted/comments/1sxjt19/im_building_the_best_lifeos_app_based_but_im/
 
 The current direction is:
 
@@ -88,15 +117,3 @@ npm run test:rust
 - `.env` files are local-only and should not be committed.
 - Vault content is not stored in this repository.
 - Editor/assistant instruction files are ignored for future commits where possible.
-
-## Product Direction
-
-Smart Notes is meant to go beyond plain note-taking:
-
-- structured templates
-- personal databases like expenses, films, and other tracked entities
-- custom views
-- local-first speed
-- future mobile support
-
-The open question is not whether notes should exist, but how far a local-first Markdown-centered model can be pushed before structured app data and sync need a stronger internal model.
