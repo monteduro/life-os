@@ -99,6 +99,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search notes…"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2 pl-9 pr-24 text-sm text-stone-700 outline-none transition-colors focus:border-stone-300 focus:bg-white"
               />
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium uppercase tracking-[0.16em] text-stone-400">

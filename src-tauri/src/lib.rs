@@ -60,6 +60,12 @@ struct VaultDocument {
   updated_at: Option<String>,
 }
 
+struct IndexedDocumentContent {
+  title: String,
+  excerpt: String,
+  body: String,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct LocalIndexStats {
@@ -422,6 +428,18 @@ fn build_document_summary(
   })
 }
 
+fn read_indexed_document_content(path: &Path) -> Result<IndexedDocumentContent, String> {
+  let raw_content = fs::read_to_string(path)
+    .map_err(|error| format!("Impossibile leggere `{}` per l'indice: {error}", path.display()))?;
+  let body = strip_frontmatter(&raw_content);
+
+  Ok(IndexedDocumentContent {
+    title: extract_title(&body, path),
+    excerpt: build_excerpt(&body),
+    body,
+  })
+}
+
 fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<LocalIndexStats, String> {
   let snapshot = scan_vault(root_path.to_string())?;
   let indexed_at = current_timestamp_string()?;
@@ -516,17 +534,19 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
   {
     let mut search_statement = transaction
       .prepare(
-        "INSERT INTO search_fts (path, title, excerpt, root_path)
-         VALUES (?1, ?2, ?3, ?4)",
+        "INSERT INTO search_fts (path, title, excerpt, body, root_path)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
       )
       .map_err(|error| format!("Impossibile preparare l'inserimento search_fts: {error}"))?;
 
     for document in &snapshot.documents {
+      let indexed_content = read_indexed_document_content(Path::new(&document.path))?;
       search_statement
         .execute(params![
           document.path.as_str(),
-          document.title.as_str(),
-          document.excerpt.as_str(),
+          indexed_content.title.as_str(),
+          indexed_content.excerpt.as_str(),
+          indexed_content.body.as_str(),
           snapshot.root_path.as_str(),
         ])
         .map_err(|error| format!("Impossibile indicizzare il testo di `{}`: {error}", document.path))?;
@@ -602,6 +622,7 @@ fn handle_vault_watch_event(
 
 fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) -> Result<(), String> {
   let summary = build_document_summary(path, root_path)?;
+  let indexed_content = read_indexed_document_content(path)?;
   let indexed_at = current_timestamp_string()?;
   let content_hash = build_document_index_hash(&summary);
 
@@ -659,11 +680,12 @@ fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) 
     )
     .and_then(|_| {
       connection.execute(
-        "INSERT INTO search_fts (path, title, excerpt, root_path) VALUES (?1, ?2, ?3, ?4)",
+        "INSERT INTO search_fts (path, title, excerpt, body, root_path) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
           summary.path.as_str(),
-          summary.title.as_str(),
-          summary.excerpt.as_str(),
+          indexed_content.title.as_str(),
+          indexed_content.excerpt.as_str(),
+          indexed_content.body.as_str(),
           root_path,
         ],
       )
@@ -726,11 +748,49 @@ fn initialize_local_index_schema(connection: &Connection) -> Result<(), String> 
         path UNINDEXED,
         title,
         excerpt,
+        body,
         root_path UNINDEXED
       );
     ",
   )
-  .map_err(|error| format!("Impossibile inizializzare lo schema SQLite: {error}"))
+  .map_err(|error| format!("Impossibile inizializzare lo schema SQLite: {error}"))?;
+
+  ensure_search_fts_columns(connection)?;
+
+  Ok(())
+}
+
+fn ensure_search_fts_columns(connection: &Connection) -> Result<(), String> {
+  let mut statement = connection
+    .prepare("PRAGMA table_info(search_fts)")
+    .map_err(|error| format!("Impossibile leggere lo schema di search_fts: {error}"))?;
+
+  let columns = statement
+    .query_map([], |row| row.get::<_, String>(1))
+    .map_err(|error| format!("Impossibile ispezionare le colonne di search_fts: {error}"))?
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(|error| format!("Impossibile leggere una colonna di search_fts: {error}"))?;
+
+  if columns.iter().any(|column| column == "body") {
+    return Ok(());
+  }
+
+  connection
+    .execute_batch(
+      "
+        DROP TABLE IF EXISTS search_fts;
+        CREATE VIRTUAL TABLE search_fts USING fts5(
+          path UNINDEXED,
+          title,
+          excerpt,
+          body,
+          root_path UNINDEXED
+        );
+      ",
+    )
+    .map_err(|error| format!("Impossibile aggiornare lo schema di search_fts: {error}"))?;
+
+  Ok(())
 }
 
 fn local_index_database_path(app: &AppHandle, root_path: &str) -> Result<PathBuf, String> {
@@ -1247,7 +1307,12 @@ Great soundtrack and visuals.\n",
     let vault = create_temp_vault();
     let database_path = vault.join(".life-os-index.sqlite");
 
-    write_file(&vault.join("Root Note.md"), "# Budget\n\nMonthly expense tracking.");
+    let long_body = format!(
+      "# Budget\n\n{} needleterm",
+      "filler ".repeat(80)
+    );
+
+    write_file(&vault.join("Root Note.md"), &long_body);
     write_file(&vault.join("Projects").join("Roadmap.md"), "# Roadmap\n\nNested body.");
 
     let stats = rebuild_local_index_at_path(&database_path, &path_to_string(&vault))
@@ -1256,7 +1321,7 @@ Great soundtrack and visuals.\n",
     let connection = Connection::open(&database_path).expect("should reopen sqlite db");
     initialize_local_index_schema(&connection).expect("schema init should succeed");
 
-    let normalized_query = normalize_search_query("expense");
+    let normalized_query = normalize_search_query("needleterm");
     let mut statement = connection
       .prepare(
         "
