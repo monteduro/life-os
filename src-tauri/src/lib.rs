@@ -260,6 +260,14 @@ fn move_folder(root_path: String, path: String, target_parent_path: Option<Strin
     return Err("Una cartella non puo` essere spostata dentro una sua sottocartella.".to_string());
   }
 
+  let current_parent = source_path
+    .parent()
+    .ok_or_else(|| "Impossibile determinare la cartella padre corrente.".to_string())?;
+
+  if current_parent == target_parent {
+    return Ok(path_to_string(&source_path));
+  }
+
   let folder_name = source_path
     .file_name()
     .and_then(|name| name.to_str())
@@ -1431,6 +1439,22 @@ Great soundtrack and visuals.\n",
     assert!(moved_path.exists());
     assert_eq!(moved_path.parent(), Some(canonical_target_parent.as_path()));
     assert!(!source.exists());
+  }
+
+  #[test]
+  fn move_folder_is_noop_when_target_parent_is_the_same() {
+    let vault = create_temp_vault();
+    let source = vault.join("Drafts");
+
+    create_dir_all(&source).expect("failed to create source folder");
+    let canonical_source = fs::canonicalize(&source).expect("should canonicalize source folder");
+
+    let moved = move_folder(path_to_string(&vault), path_to_string(&source), None)
+      .expect("move_folder noop should succeed");
+
+    assert_eq!(moved, path_to_string(&canonical_source));
+    assert!(source.exists());
+    assert!(!vault.join("Drafts 1").exists());
   }
 
   #[test]

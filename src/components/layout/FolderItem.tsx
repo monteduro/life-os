@@ -1,4 +1,5 @@
 import { ChevronRight } from 'lucide-react'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { getIcon } from '../../lib/iconMap'
 import type { Folder } from '../../types'
@@ -8,16 +9,30 @@ import type { Folder } from '../../types'
 interface FolderItemProps {
   folder: Folder
   depth?: number
+  activeDragFolderId: string | null
+  overFolderId: string | null
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
+export default function FolderItem({
+  folder,
+  depth = 0,
+  activeDragFolderId,
+  overFolderId,
+}: FolderItemProps) {
   const { selectedFolderId, expandedFolders, selectFolder, toggleFolder } = useNavigationStore()
+  const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+    id: folder.id,
+  })
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: folder.id,
+  })
 
   const isSelected = selectedFolderId === folder.id
   const isExpanded = expandedFolders.has(folder.id)
   const hasChildren = folder.children && folder.children.length > 0
+  const isDropTarget = isOver && activeDragFolderId !== folder.id && overFolderId === folder.id
 
   // Icon
   const Icon = getIcon(folder.icon, 'folder')
@@ -30,11 +45,18 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
   // Ricalcolo per childBranchLeft: paddingLeft + mezzo icona
   const branchLeft = paddingLeft + 8; // pl + w-4(16px)/2
 
+  const setNodeRef = (node: HTMLDivElement | null) => {
+    setDroppableRef(node)
+    setDraggableRef(node)
+  }
+
   return (
-    <div className="relative">
-      {/* Folder button */}
-      <button
-        onClick={() => selectFolder(folder.id, folder.name)}
+    <div ref={setNodeRef} className="relative">
+        {/* Folder button */}
+        <button
+          onClick={() => selectFolder(folder.id, folder.name)}
+          {...attributes}
+          {...listeners}
         style={{ paddingLeft: `${paddingLeft}px` }}
         className={`
           flex items-center gap-2 rounded-lg transition-colors w-full relative z-10
@@ -43,8 +65,10 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             ? 'bg-stone-100/90 text-stone-900 font-medium'
             : 'text-stone-700 hover:bg-stone-100/60'
           }
+          ${isDropTarget ? 'ring-1 ring-stone-300 bg-stone-100/90' : ''}
+          ${isDragging ? 'cursor-grabbing opacity-50' : 'cursor-default active:cursor-grabbing'}
         `}
-      >
+        >
         {/* Icon */}
         <Icon className={`w-4 h-4 shrink-0 relative z-20 ${isSelected ? 'text-stone-800' : 'text-stone-400 group-hover:text-stone-500'}`} />
 
@@ -75,7 +99,7 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
             />
           </div>
         )}
-      </button>
+        </button>
 
       {/* Children (ricorsivo) con linea albero stilizzata */}
       {hasChildren && isExpanded && (
@@ -100,7 +124,12 @@ export default function FolderItem({ folder, depth = 0 }: FolderItemProps) {
                     style={{ left: `${branchLeft}px` }}
                   />
                 )}
-                <FolderItem folder={child} depth={depth + 1} />
+                <FolderItem
+                  folder={child}
+                  depth={depth + 1}
+                  activeDragFolderId={activeDragFolderId}
+                  overFolderId={overFolderId}
+                />
               </div>
             );
           })}

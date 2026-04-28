@@ -8,6 +8,8 @@ interface SidebarNavItemProps {
   count?: number
   isActive: boolean
   onClick: () => void
+  className?: string
+  style?: React.CSSProperties
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -18,10 +20,13 @@ export default function SidebarNavItem({
   count,
   isActive,
   onClick,
+  className,
+  style,
 }: SidebarNavItemProps) {
   return (
     <button
       onClick={onClick}
+      style={style}
       className={`
         flex items-center gap-2 rounded-lg transition-colors w-full relative z-10
         py-1.5 pr-8 pl-[4px] text-[13px]
@@ -29,6 +34,7 @@ export default function SidebarNavItem({
           ? 'bg-stone-100/90 text-stone-900 font-semibold'
           : 'text-stone-700 hover:bg-stone-100/60'
         }
+        ${className ?? ''}
       `}
     >
       <Icon className={`w-4 h-4 shrink-0 relative z-20 ${isActive ? 'text-stone-900' : 'text-stone-600 group-hover:text-stone-900'}`} />

@@ -251,6 +251,11 @@ These are the main files to migrate first:
    - index representation
    - preview/backlink behavior
 
+## Possible Future Enhancements
+
+- Custom folder ordering in the sidebar as app-level metadata, separate from filesystem order.
+- Manual note ordering inside folders as app-level metadata, separate from filesystem order.
+
 ### Phase 8: Templates
 
 - [ ] Create `src/core/templates/templateTypes.ts`.
