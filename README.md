@@ -39,6 +39,10 @@ The current direction is:
 - Tauri as the desktop shell
 - future SQLite indexing layer for speed, search, and structured views
 
+Current local architecture in one sentence:
+
+- Markdown files are the source of truth, while a local SQLite index is rebuilt and queried for fast search, metadata lookup, and future structured views.
+
 This is no longer a plain Vite starter and no longer a backend-first notes client.
 
 ## Current Status

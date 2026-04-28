@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 
+import type { VaultDocumentSummary } from '../vault/types'
 import type { LocalIndexStats } from './types'
 
 declare global {
@@ -17,4 +18,9 @@ function ensureDesktopShell() {
 export async function rebuildLocalIndex(rootPath: string) {
   ensureDesktopShell()
   return invoke<LocalIndexStats>('rebuild_local_index', { rootPath })
+}
+
+export async function searchLocalIndex(rootPath: string, query: string) {
+  ensureDesktopShell()
+  return invoke<VaultDocumentSummary[]>('search_local_index', { rootPath, query })
 }

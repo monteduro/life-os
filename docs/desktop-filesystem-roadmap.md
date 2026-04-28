@@ -190,7 +190,7 @@ These are the main files to migrate first:
 - [x] Implement an initial full-vault indexing pass.
 - [x] Store content hash and last indexed timestamp per file.
 - [ ] Implement incremental re-indexing from watcher events.
-- [ ] Add full-text search queries for fast filtering and global search.
+- [x] Add full-text search queries for fast filtering and global search.
 - [ ] Add index health/rebuild commands.
 
 ### Phase 5: Frontend Data Migration

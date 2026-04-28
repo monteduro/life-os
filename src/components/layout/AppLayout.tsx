@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { Search } from 'lucide-react'
+
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useVaultStore } from '../../stores/vaultStore'
 import Sidebar from './Sidebar'
@@ -12,8 +15,27 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { sidebarOpen, setSidebarOpen, selectedFolderName } = useNavigationStore()
-  const { currentVault, openVault, rescanVault, status } = useVaultStore()
-  const currentTitle = selectedFolderName ?? currentVault?.rootName ?? 'Vault'
+  const {
+    currentVault,
+    openVault,
+    rescanVault,
+    status,
+    searchQuery,
+    searchStatus,
+    setSearchQuery,
+    runSearch,
+  } = useVaultStore()
+  const currentTitle = searchQuery.trim()
+    ? 'Search'
+    : selectedFolderName ?? currentVault?.rootName ?? 'Vault'
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      void runSearch(searchQuery)
+    }, 180)
+
+    return () => window.clearTimeout(handle)
+  }, [runSearch, searchQuery])
 
   return (
     <div className="min-h-screen bg-stone-50 flex">
@@ -32,7 +54,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header
-          className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-stone-100 px-6 flex items-center justify-between"
+          className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-stone-100 px-6 flex items-center justify-between gap-4"
           style={{ height: 'var(--navbar-height)' }}
         >
           {/* Mobile: hamburger */}
@@ -67,6 +89,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 {currentVault.rootName}
               </span>
             )}
+          </div>
+
+          <div className="hidden md:flex flex-1 max-w-xl">
+            <label className="relative w-full">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search notes…"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2 pl-9 pr-24 text-sm text-stone-700 outline-none transition-colors focus:border-stone-300 focus:bg-white"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium uppercase tracking-[0.16em] text-stone-400">
+                {searchStatus === 'searching' ? 'searching' : 'local'}
+              </span>
+            </label>
           </div>
 
           <div className="flex items-center gap-2">

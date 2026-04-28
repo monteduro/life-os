@@ -288,6 +288,71 @@ fn rebuild_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexSt
   rebuild_local_index_at_path(&database_path, &root_path)
 }
 
+#[tauri::command]
+fn search_local_index(
+  app: AppHandle,
+  root_path: String,
+  query: String,
+) -> Result<Vec<VaultDocumentSummary>, String> {
+  let normalized_query = normalize_search_query(&query);
+  if normalized_query.is_empty() {
+    return Ok(Vec::new());
+  }
+
+  let database_path = local_index_database_path(&app, &root_path)?;
+  let connection = Connection::open(&database_path).map_err(|error| {
+    format!(
+      "Impossibile aprire il database indice `{}`: {error}",
+      database_path.display()
+    )
+  })?;
+
+  initialize_local_index_schema(&connection)?;
+
+  let mut statement = connection
+    .prepare(
+      "
+        SELECT
+          d.path,
+          d.name,
+          d.title,
+          d.parent_path,
+          d.excerpt,
+          d.updated_at
+        FROM search_fts fts
+        JOIN documents d
+          ON d.path = fts.path
+         AND d.root_path = fts.root_path
+        WHERE fts.root_path = ?1
+          AND search_fts MATCH ?2
+        ORDER BY bm25(search_fts), CAST(COALESCE(d.updated_at, '0') AS INTEGER) DESC
+        LIMIT 100
+      ",
+    )
+    .map_err(|error| format!("Impossibile preparare la query di ricerca: {error}"))?;
+
+  let rows = statement
+    .query_map(params![root_path.as_str(), normalized_query.as_str()], |row| {
+      Ok(VaultDocumentSummary {
+        id: row.get(0)?,
+        path: row.get(0)?,
+        name: row.get(1)?,
+        title: row.get(2)?,
+        parent_path: row.get(3)?,
+        excerpt: row.get(4)?,
+        updated_at: row.get(5)?,
+      })
+    })
+    .map_err(|error| format!("Impossibile eseguire la ricerca sull'indice locale: {error}"))?;
+
+  let mut results = Vec::new();
+  for row in rows {
+    results.push(row.map_err(|error| format!("Impossibile leggere un risultato di ricerca: {error}"))?);
+  }
+
+  Ok(results)
+}
+
 fn build_document_summary(
   path: &Path,
   root_path: &str,
@@ -531,6 +596,21 @@ fn build_document_index_hash(document: &VaultDocumentSummary) -> String {
   ))
 }
 
+fn normalize_search_query(query: &str) -> String {
+  query
+    .split_whitespace()
+    .map(|term| {
+      term
+        .chars()
+        .filter(|character| character.is_alphanumeric() || matches!(character, '_' | '-'))
+        .collect::<String>()
+    })
+    .filter(|term| !term.is_empty())
+    .map(|term| format!("{term}*"))
+    .collect::<Vec<_>>()
+    .join(" OR ")
+}
+
 fn hash_string(value: &str) -> String {
   let mut hasher = DefaultHasher::new();
   value.hash(&mut hasher);
@@ -742,7 +822,8 @@ pub fn run() {
       save_document,
       delete_document,
       move_document,
-      rebuild_local_index
+      rebuild_local_index,
+      search_local_index
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application")
@@ -968,5 +1049,43 @@ Great soundtrack and visuals.\n",
     assert_eq!(document_count, 2);
     assert_eq!(folder_count, 1);
     assert_eq!(fts_count, 2);
+  }
+
+  #[test]
+  fn search_local_index_returns_matching_documents() {
+    let vault = create_temp_vault();
+    let database_path = vault.join(".life-os-index.sqlite");
+
+    write_file(&vault.join("Root Note.md"), "# Budget\n\nMonthly expense tracking.");
+    write_file(&vault.join("Projects").join("Roadmap.md"), "# Roadmap\n\nNested body.");
+
+    let stats = rebuild_local_index_at_path(&database_path, &path_to_string(&vault))
+      .expect("local index rebuild should succeed");
+
+    let connection = Connection::open(&database_path).expect("should reopen sqlite db");
+    initialize_local_index_schema(&connection).expect("schema init should succeed");
+
+    let normalized_query = normalize_search_query("expense");
+    let mut statement = connection
+      .prepare(
+        "
+          SELECT d.title
+          FROM search_fts fts
+          JOIN documents d
+            ON d.path = fts.path
+           AND d.root_path = fts.root_path
+          WHERE fts.root_path = ?1
+            AND search_fts MATCH ?2
+        ",
+      )
+      .expect("should prepare search query");
+
+    let titles = statement
+      .query_map(params![stats.root_path, normalized_query], |row| row.get::<_, String>(0))
+      .expect("query should succeed")
+      .collect::<Result<Vec<_>, _>>()
+      .expect("rows should decode");
+
+    assert_eq!(titles, vec!["Budget".to_string()]);
   }
 }

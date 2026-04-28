@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import { rebuildLocalIndex } from '../core/index/localIndexClient'
+import { rebuildLocalIndex, searchLocalIndex } from '../core/index/localIndexClient'
 import type { LocalIndexStats } from '../core/index/types'
 import { useNavigationStore } from './navigationStore'
 import { pickVaultDirectory } from '../core/vault/tauriVaultClient'
@@ -8,23 +8,28 @@ import {
   activeDocumentRepository,
   activeWorkspaceRepository,
 } from '../core/storage/activeStorage'
-import type { VaultDocument, VaultSnapshot } from '../core/vault/types'
+import type { VaultDocument, VaultDocumentSummary, VaultSnapshot } from '../core/vault/types'
 
 const RECENT_VAULT_PATH_KEY = 'smart-notes.desktop.recent-vault-path'
 
 type VaultStatus = 'idle' | 'loading' | 'ready' | 'error'
 type IndexStatus = 'idle' | 'indexing' | 'ready' | 'error'
+type SearchStatus = 'idle' | 'searching' | 'ready' | 'error'
 
 interface VaultState {
   status: VaultStatus
   indexStatus: IndexStatus
+  searchStatus: SearchStatus
   error: string | null
   indexError: string | null
+  searchError: string | null
   currentVault: VaultSnapshot | null
   selectedDocument: VaultDocument | null
   selectedDocumentPath: string | null
   isReadingDocument: boolean
   currentIndex: LocalIndexStats | null
+  searchQuery: string
+  searchResults: VaultDocumentSummary[]
   loadRecentVault: () => Promise<void>
   openVault: () => Promise<void>
   loadVault: (rootPath: string) => Promise<void>
@@ -33,6 +38,9 @@ interface VaultState {
   createDocument: (parentPath: string | null, title?: string) => Promise<VaultDocument | null>
   saveDocument: (path: string, content: string) => Promise<VaultDocument | null>
   deleteDocument: (path: string) => Promise<void>
+  setSearchQuery: (query: string) => void
+  runSearch: (query: string) => Promise<void>
+  clearSearch: () => void
   clearError: () => void
 }
 
@@ -59,13 +67,17 @@ async function refreshCurrentVaultSnapshot() {
 export const useVaultStore = create<VaultState>((set, get) => ({
   status: 'idle',
   indexStatus: 'idle',
+  searchStatus: 'idle',
   error: null,
   indexError: null,
+  searchError: null,
   currentVault: null,
   selectedDocument: null,
   selectedDocumentPath: null,
   isReadingDocument: false,
   currentIndex: null,
+  searchQuery: '',
+  searchResults: [],
 
   async loadRecentVault() {
     const recentPath = readRecentVaultPath()
@@ -96,13 +108,17 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     set({
       status: 'loading',
       indexStatus: 'idle',
+      searchStatus: 'idle',
       error: null,
       indexError: null,
+      searchError: null,
       currentVault: null,
       selectedDocument: null,
       selectedDocumentPath: null,
       isReadingDocument: false,
       currentIndex: null,
+      searchQuery: '',
+      searchResults: [],
     })
 
     try {
@@ -241,6 +257,64 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         error: error instanceof Error ? error.message : 'Impossibile eliminare il documento.',
       })
     }
+  },
+
+  setSearchQuery(query) {
+    set({ searchQuery: query })
+  },
+
+  async runSearch(query) {
+    const rootPath = get().currentVault?.rootPath
+    const normalizedQuery = query.trim()
+
+    if (!rootPath || !normalizedQuery) {
+      set({
+        searchQuery: query,
+        searchResults: [],
+        searchStatus: 'idle',
+        searchError: null,
+      })
+      return
+    }
+
+    set({
+      searchQuery: query,
+      searchStatus: 'searching',
+      searchError: null,
+    })
+
+    try {
+      const results = await searchLocalIndex(rootPath, normalizedQuery)
+
+      if (get().searchQuery !== query) {
+        return
+      }
+
+      set({
+        searchResults: results,
+        searchStatus: 'ready',
+        searchError: null,
+      })
+    } catch (error) {
+      if (get().searchQuery !== query) {
+        return
+      }
+
+      set({
+        searchResults: [],
+        searchStatus: 'error',
+        searchError: error instanceof Error ? error.message : 'Ricerca locale fallita.',
+      })
+    }
+  },
+
+  clearSearch() {
+    set({
+      searchQuery: '',
+      searchResults: [],
+      searchStatus: 'idle',
+      searchError: null,
+    })
   },
 
   clearError() {

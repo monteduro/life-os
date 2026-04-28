@@ -63,6 +63,10 @@ export default function NoteList({ folderId = null }: NoteListProps) {
   const {
     currentVault,
     createDocument,
+    searchQuery,
+    searchResults,
+    searchStatus,
+    searchError,
   } = useVaultStore()
 
   // Quale nota dell'archivio è attualmente espansa (accordion: max 1 alla volta)
@@ -86,8 +90,10 @@ export default function NoteList({ folderId = null }: NoteListProps) {
     )
   }
 
-  const allNotes = [...currentVault.documents]
-    .filter((document) => document.parentPath === folderId)
+  const isSearchActive = searchQuery.trim().length > 0
+
+  const allNotes = [...(isSearchActive ? searchResults : currentVault.documents)]
+    .filter((document) => isSearchActive || document.parentPath === folderId)
     .sort((left, right) => Number(right.updatedAt ?? 0) - Number(left.updatedAt ?? 0))
 
   const inlineNotes = allNotes.slice(0, 2)   // ultime 2: TipTap sempre caricato
@@ -119,11 +125,22 @@ export default function NoteList({ folderId = null }: NoteListProps) {
             </button>
           </div>
           <p className="mt-4 text-base text-stone-700 leading-7">
-            Questa e` la tua UI principale riattaccata al vault locale. In questo step la
-            navigazione e` read-only: leggiamo file Markdown reali senza backend e senza
-            ancora riattivare il salvataggio TipTap. La creazione file ora passa pero`
-            attraverso il repository locale reale.
+            {isSearchActive
+              ? `Ricerca locale sull'indice SQLite per “${searchQuery.trim()}”.`
+              : `Questa e\` la tua UI principale riattaccata al vault locale. In questo step la
+            navigazione e\` read-only: leggiamo file Markdown reali senza backend e senza
+            ancora riattivare il salvataggio TipTap. La creazione file ora passa pero\`
+            attraverso il repository locale reale.`}
           </p>
+          {isSearchActive && (
+            <div className="mt-4 flex items-center gap-3 text-sm text-stone-500">
+              <span>
+                {searchStatus === 'searching' && 'Ricerca in corso…'}
+                {searchStatus === 'ready' && `${allNotes.length} risultati`}
+                {searchStatus === 'error' && (searchError ?? 'Ricerca fallita')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -182,7 +199,7 @@ export default function NoteList({ folderId = null }: NoteListProps) {
       {/* ── Empty state ── */}
       {allNotes.length === 0 && (
         <p className="text-sm text-stone-400 italic py-4">
-          Nessuna nota Markdown in questa cartella.
+          {isSearchActive ? 'Nessun risultato per questa ricerca.' : 'Nessuna nota Markdown in questa cartella.'}
         </p>
       )}
     </div>
