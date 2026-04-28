@@ -37,6 +37,7 @@ interface VaultState {
   refreshVaultSnapshot: () => Promise<void>
   selectDocument: (path: string | null) => Promise<void>
   createDocument: (parentPath: string | null, title?: string) => Promise<VaultDocument | null>
+  moveDocument: (path: string, targetFolderPath: string | null, fileName?: string) => Promise<VaultDocument | null>
   saveDocument: (path: string, content: string) => Promise<VaultDocument | null>
   deleteDocument: (path: string) => Promise<void>
   setSearchQuery: (query: string) => void
@@ -222,6 +223,37 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Impossibile creare il documento.',
+      })
+      return null
+    }
+  },
+
+  async moveDocument(path, targetFolderPath, fileName) {
+    const rootPath = get().currentVault?.rootPath
+    if (!rootPath) {
+      set({ error: 'Nessun vault aperto.' })
+      return null
+    }
+
+    try {
+      const document = await activeDocumentRepository.moveDocument({
+        path,
+        targetFolderPath: targetFolderPath ?? rootPath,
+        fileName,
+      })
+      await refreshCurrentVaultSnapshot()
+      if (get().searchQuery.trim()) {
+        await get().runSearch(get().searchQuery)
+      }
+      set({
+        selectedDocument: document,
+        selectedDocumentPath: document.path,
+        error: null,
+      })
+      return document
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Impossibile spostare il documento.',
       })
       return null
     }

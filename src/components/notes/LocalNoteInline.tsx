@@ -4,6 +4,7 @@ import NoteEditor from '../editor/NoteEditor'
 import { activeDocumentRepository } from '../../core/storage/activeStorage'
 import { formatDate } from '../../lib/utils'
 import { useVaultStore } from '../../stores/vaultStore'
+import FolderSelector from './FolderSelector'
 import {
   markdownToTipTapDocument,
   mergeRawVaultDocument,
@@ -24,17 +25,19 @@ const EMPTY_DOC: TipTapDocument = {
 }
 
 export default function LocalNoteInline({ summary, onClose }: LocalNoteInlineProps) {
-  const { saveDocument, deleteDocument } = useVaultStore()
+  const { saveDocument, deleteDocument, moveDocument } = useVaultStore()
 
   const [editorKey, setEditorKey] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [documentTitle, setDocumentTitle] = useState(summary.title)
   const [frontmatter, setFrontmatter] = useState<string | null>(null)
   const [editorDocument, setEditorDocument] = useState<TipTapDocument>(EMPTY_DOC)
+  const [pendingFolderId, setPendingFolderId] = useState<string | null>(summary.parentPath)
 
   const updatedAt = useMemo(() => normalizeTimestamp(summary.updatedAt), [summary.updatedAt])
 
@@ -50,6 +53,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       setEditorDocument(markdownToTipTapDocument(rawParts.body))
       setDocumentTitle(loadedDocument.title)
       setIsDirty(false)
+      setPendingFolderId(summary.parentPath)
       setEditorKey((value) => value + 1)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Impossibile leggere il documento.')
@@ -80,15 +84,22 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       const savedDocument = await saveDocument(summary.path, rawContent)
 
       if (savedDocument) {
-        setDocumentTitle(savedDocument.title)
-        setIsDirty(false)
+        if (pendingFolderId !== summary.parentPath) {
+          const movedDocument = await moveDocument(savedDocument.path, pendingFolderId)
+          if (movedDocument && onClose) {
+            onClose()
+          }
+        } else {
+          setDocumentTitle(savedDocument.title)
+          setIsDirty(false)
+        }
       }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Impossibile salvare il documento.')
     } finally {
       setIsSaving(false)
     }
-  }, [editorDocument, frontmatter, saveDocument, summary.path])
+  }, [editorDocument, frontmatter, moveDocument, onClose, pendingFolderId, saveDocument, summary.parentPath, summary.path])
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true)
@@ -101,8 +112,27 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       setSaveError(error instanceof Error ? error.message : 'Impossibile eliminare il documento.')
     } finally {
       setIsDeleting(false)
+      setIsConfirmingDelete(false)
     }
   }, [deleteDocument, onClose, summary.path])
+
+  const handleMove = useCallback(async (newFolderId: string | null) => {
+    setSaveError(null)
+
+    if (isDirty) {
+      setPendingFolderId(newFolderId)
+      return
+    }
+
+    try {
+      const movedDocument = await moveDocument(summary.path, newFolderId)
+      if (movedDocument && onClose) {
+        onClose()
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Impossibile spostare il documento.')
+    }
+  }, [isDirty, moveDocument, onClose, summary.path])
 
   if (isLoading) {
     return (
@@ -132,26 +162,52 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
 
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 mt-2 border-t border-stone-100">
         <div className="flex items-center gap-3 flex-wrap">
+          <FolderSelector folderId={pendingFolderId} onChange={(newFolderId) => {
+            void handleMove(newFolderId)
+          }} />
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
             {documentTitle}
           </span>
           <span className="text-xs text-stone-400">{formatDate(updatedAt)}</span>
+          {isDirty && pendingFolderId !== summary.parentPath && (
+            <span className="text-xs text-amber-600">Folder change will apply on save</span>
+          )}
           {saveError && (
             <span className="text-xs text-red-500">{saveError}</span>
           )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap ml-auto">
-          <button
-            type="button"
-            onClick={() => {
-              void handleDelete()
-            }}
-            disabled={isDeleting}
-            className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
-          >
-            {isDeleting ? 'Eliminazione…' : 'Elimina'}
-          </button>
+          {isConfirmingDelete ? (
+            <div className="flex items-center gap-1">
+              <span className="text-[0.8125rem] text-stone-500 mr-1">Eliminare?</span>
+              <button
+                type="button"
+                onClick={() => setIsConfirmingDelete(false)}
+                className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleDelete()
+                }}
+                disabled={isDeleting}
+                className="text-[0.8125rem] font-semibold px-4 py-1.5 rounded-lg bg-red-100 text-red-600 hover-lift-sm hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isDeleting ? '...' : 'Sì'}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDelete(true)}
+              className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            >
+              Elimina
+            </button>
+          )}
           {onClose && (
             <button
               type="button"

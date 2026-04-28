@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate } from '../../lib/utils'
 import { useVaultStore } from '../../stores/vaultStore'
+import FolderSelector from './FolderSelector'
 import LocalNoteInline from './LocalNoteInline'
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -20,42 +21,55 @@ interface NoteListProps {
 }
 
 function NotePreviewCard({
+  path,
+  folderId,
   title,
   excerpt,
   updatedAt,
+  onMove,
   onClick,
 }: {
+  path: string
+  folderId: string | null
   title: string
   excerpt: string
   updatedAt: string
+  onMove: (path: string, newFolderId: string | null) => void
   onClick: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="hover-lift w-full text-left flex flex-col gap-3 p-5 rounded-2xl bg-white border border-stone-100 shadow-soft hover:border-stone-200 hover:shadow-soft-lg cursor-pointer group"
-    >
-      <div className="flex items-center gap-2">
+    <div className="hover-lift w-full text-left flex flex-col gap-3 p-5 rounded-2xl bg-white border border-stone-100 shadow-soft hover:border-stone-200 hover:shadow-soft-lg group">
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left flex flex-col gap-3 cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">
           Markdown
         </span>
         <span className="ml-auto text-xs text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity">
           apri →
         </span>
-      </div>
+        </div>
 
-      <h3 className="text-base font-semibold tracking-tight text-stone-900">
-        {title}
-      </h3>
+        <h3 className="text-base font-semibold tracking-tight text-stone-900">
+          {title}
+        </h3>
 
-      <p className="text-sm text-stone-500 leading-relaxed line-clamp-4">
-        {excerpt || <span className="italic text-stone-300">Nota vuota</span>}
-      </p>
+        <p className="text-sm text-stone-500 leading-relaxed line-clamp-4">
+          {excerpt || <span className="italic text-stone-300">Nota vuota</span>}
+        </p>
+      </button>
 
       <div className="flex items-center justify-between mt-auto pt-2 border-t border-stone-50">
+        <FolderSelector
+          folderId={folderId}
+          onChange={(newFolderId) => onMove(path, newFolderId)}
+        />
         <span className="text-xs text-stone-300 ml-auto">{formatDate(updatedAt)}</span>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -63,6 +77,7 @@ export default function NoteList({ folderId = null }: NoteListProps) {
   const {
     currentVault,
     createDocument,
+    moveDocument,
     searchQuery,
     searchResults,
     searchStatus,
@@ -184,9 +199,14 @@ export default function NoteList({ folderId = null }: NoteListProps) {
               .map((note) => (
                 <NotePreviewCard
                   key={note.path}
+                  path={note.path}
+                  folderId={note.parentPath}
                   title={note.title}
                   excerpt={note.excerpt}
                   updatedAt={normalizeTimestamp(note.updatedAt)}
+                  onMove={(path, newFolderId) => {
+                    void moveDocument(path, newFolderId)
+                  }}
                   onClick={() => {
                     setExpandedId(note.path)
                   }}

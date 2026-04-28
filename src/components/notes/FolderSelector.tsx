@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { Folder as FolderIcon, Search, Check, ChevronRight } from 'lucide-react'
-import { useFolders, buildFolderTree } from '../../api/foldersApi'
+import { mapVaultFoldersToAppFolders } from '../../core/vault/adapters'
 import { getIcon } from '../../lib/iconMap'
+import { useVaultStore } from '../../stores/vaultStore'
 import type { Folder } from '../../types'
 
 interface FolderSelectorProps {
@@ -12,7 +13,7 @@ interface FolderSelectorProps {
 }
 
 export default function FolderSelector({ folderId, onChange, readOnly = false }: FolderSelectorProps) {
-    const { data: folders, isLoading } = useFolders()
+    const currentVault = useVaultStore((state) => state.currentVault)
     const [open, setOpen] = useState(false)
     const [search, setSearch] = useState('')
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
@@ -27,7 +28,15 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
         })
     }
 
-    const activeFolder = folders?.find((f) => f.id === folderId)
+    const folders = useMemo(() => {
+        if (!currentVault) return []
+        return mapVaultFoldersToAppFolders(currentVault.folders)
+    }, [currentVault])
+
+    const activeFolder = useMemo(
+        () => flattenFolders(folders).find((f) => f.id === folderId) ?? null,
+        [folderId, folders],
+    )
     const InboxIcon = getIcon(null, 'inbox')
 
     // Recursive search to find folders matching the search or having children that match
@@ -51,9 +60,9 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
     }
 
     const folderTree = useMemo(() => {
-        if (!folders) return []
+        if (!folders.length) return []
         const activeFolders = folders.filter(f => !f.is_archived)
-        const tree = buildFolderTree(activeFolders)
+        const tree = activeFolders.filter((folder) => folder.parent_id === null)
         if (!search.trim()) return tree
         return filterTree(tree, search)
     }, [folders, search])
@@ -75,7 +84,7 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
             ) : (
                 <FolderIcon className="w-3.5 h-3.5 text-stone-400" />
             )}
-            <span>{activeFolder?.name || 'Inbox'}</span>
+            <span>{activeFolder?.name || currentVault?.rootName || 'Root'}</span>
         </div>
     )
 
@@ -144,6 +153,10 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
                         <Search className="w-3.5 h-3.5 text-stone-400" />
                         <input
                             autoFocus
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             className="flex-1 bg-transparent text-xs text-stone-700 outline-none placeholder:text-stone-300 py-1"
                             placeholder="Cerca cartella..."
                             value={search}
@@ -152,8 +165,8 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
                     </div>
 
                     <div className="overflow-y-auto flex-1 p-1 scrollbar-hide">
-                        {isLoading ? (
-                            <div className="py-2 px-2 text-xs text-stone-400 text-center">Caricamento...</div>
+                        {!currentVault ? (
+                            <div className="py-2 px-2 text-xs text-stone-400 text-center">Nessun vault aperto</div>
                         ) : (
                             <div className="flex flex-col">
                                 {!search.trim() && (
@@ -168,7 +181,7 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
                                         <div className="w-3.5 flex items-center justify-center">
                                             <InboxIcon className={`w-3 h-3 ${folderId === null ? 'text-stone-700' : 'text-stone-300'}`} />
                                         </div>
-                                        <span className="flex-1 truncate">Inbox</span>
+                                        <span className="flex-1 truncate">{currentVault.rootName}</span>
                                         {folderId === null && <Check className="w-3.5 h-3.5 text-stone-700" />}
                                     </button>
                                 )}
@@ -185,4 +198,8 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
             </PopoverPrimitive.Portal>
         </PopoverPrimitive.Root>
     )
+}
+
+function flattenFolders(folders: Folder[]): Folder[] {
+    return folders.flatMap((folder) => [folder, ...flattenFolders(folder.children ?? [])])
 }
