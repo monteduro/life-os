@@ -8,6 +8,8 @@ import {
   activeDocumentRepository,
   activeWorkspaceRepository,
 } from '../core/storage/activeStorage'
+import { rewriteFolderMentionTargets } from '../core/vault/markdownDocument'
+import { toVaultRelativePath } from '../core/vault/paths'
 import type { VaultDocument, VaultDocumentSummary, VaultSnapshot } from '../core/vault/types'
 
 const RECENT_VAULT_PATH_KEY = 'smart-notes.desktop.recent-vault-path'
@@ -231,9 +233,21 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   },
 
   async renameFolder(path, name) {
+    const currentVault = get().currentVault
+    const rootPath = currentVault?.rootPath
+
+    if (!rootPath) {
+      set({ error: 'Nessun vault aperto.' })
+      return null
+    }
+
     try {
       const renamedPath = await activeWorkspaceRepository.renameFolder({ path, name })
+      await propagateFolderMentionRename(rootPath, path, renamedPath)
       await refreshCurrentVaultSnapshot()
+      if (get().searchQuery.trim()) {
+        await get().runSearch(get().searchQuery)
+      }
       set({ error: null })
       return renamedPath
     } catch (error) {
@@ -399,3 +413,32 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     set({ error: null })
   },
 }))
+
+async function propagateFolderMentionRename(rootPath: string, oldFolderPath: string, newFolderPath: string) {
+  const oldRelativePath = toVaultRelativePath(rootPath, oldFolderPath)
+  const newRelativePath = toVaultRelativePath(rootPath, newFolderPath)
+
+  if (!oldRelativePath || oldRelativePath === newRelativePath) {
+    return
+  }
+
+  const snapshot = await activeWorkspaceRepository.scanWorkspace(rootPath)
+
+  for (const document of snapshot.documents) {
+    const loadedDocument = await activeDocumentRepository.readDocument(document.path)
+    const nextRawContent = rewriteFolderMentionTargets(
+      loadedDocument.rawContent,
+      oldRelativePath,
+      newRelativePath,
+    )
+
+    if (nextRawContent === loadedDocument.rawContent) {
+      continue
+    }
+
+    await activeDocumentRepository.saveDocument({
+      path: document.path,
+      content: nextRawContent,
+    })
+  }
+}

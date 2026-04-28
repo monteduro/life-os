@@ -1,6 +1,6 @@
 import MarkdownIt from 'markdown-it'
 
-import { getVaultPathLabel } from './paths'
+import { getVaultPathLabel, normalizeVaultPath } from './paths'
 import type { TipTapDocument, TipTapNode } from '../../types'
 
 const markdownParser = new MarkdownIt('commonmark', {
@@ -76,6 +76,29 @@ export function tipTapDocumentToMarkdown(document: TipTapDocument) {
     .filter((value) => value.trim().length > 0)
 
   return blocks.join('\n\n').trim()
+}
+
+export function rewriteFolderMentionTargets(rawContent: string, oldTargetPath: string, newTargetPath: string) {
+  const normalizedOldTargetPath = normalizeVaultPath(oldTargetPath)
+  const normalizedNewTargetPath = normalizeVaultPath(newTargetPath)
+
+  if (!normalizedOldTargetPath || normalizedOldTargetPath === normalizedNewTargetPath) {
+    return rawContent
+  }
+
+  return rawContent.replace(/\[\[([^|\]]+)(\|[^\]]+)?\]\]/g, (fullMatch, target, labelPart = '') => {
+    const normalizedTarget = normalizeVaultPath(String(target).trim())
+
+    if (normalizedTarget !== normalizedOldTargetPath && !normalizedTarget.startsWith(`${normalizedOldTargetPath}/`)) {
+      return fullMatch
+    }
+
+    const rewrittenTarget = normalizedTarget === normalizedOldTargetPath
+      ? normalizedNewTargetPath
+      : `${normalizedNewTargetPath}${normalizedTarget.slice(normalizedOldTargetPath.length)}`
+
+    return `[[${rewrittenTarget}${labelPart}]]`
+  })
 }
 
 function parseBlockTokens(tokens: MarkdownToken[], start: number, end: number): TipTapNode[] {
