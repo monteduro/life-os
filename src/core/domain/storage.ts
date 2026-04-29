@@ -16,6 +16,9 @@ export interface DocumentSummary {
   title: string
   parentPath: string | null
   excerpt: string
+  dueDate: string | null
+  dueDateRaw: string | null
+  completedAt: string | null
   updatedAt: string | null
 }
 

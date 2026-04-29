@@ -153,7 +153,7 @@ export default function NoteEditor({
       content: content ?? undefined,
       onUpdate: handleUpdate,
     },
-    [editorKey, preferredDateRaw, dismissedDateRawsKey, lang],
+    [editorKey, dismissedDateRawsKey, lang],
   )
 
   // Sync content from outside when editorKey changes (reset)
@@ -167,7 +167,10 @@ export default function NoteEditor({
     <EditorCallbacksContext.Provider value={{ onBeforeNavigate }}>
       <div className="w-full bg-transparent border-none rounded-none shadow-none">
         <EditorContext.Provider value={{ editor }}>
-          <div className="sticky z-10 bg-white/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2 pt-1 mb-1" style={{ top: 'var(--navbar-height)' }}>
+          <div
+            className="sticky z-10 bg-transparent backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2 pt-1 mb-1"
+            style={{ top: 'var(--navbar-height)' }}
+          >
             <div className="note-editor-toolbar-scroll">
               <Toolbar className="!border-none !bg-transparent !p-0 !mb-0">
                 <ToolbarGroup>

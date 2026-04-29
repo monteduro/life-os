@@ -22,6 +22,8 @@ import type { DetectedDate } from '../../extensions/date-detection-extension'
 interface LocalNoteInlineProps {
   summary: VaultDocumentSummary
   onClose?: () => void
+  reminderCompletionControl?: React.ReactNode
+  reminderTone?: 'default' | 'overdue' | 'completed'
 }
 
 const EMPTY_DOC: TipTapDocument = {
@@ -66,7 +68,12 @@ function clearDraft(path: string) {
   localStorage.removeItem(getDraftStorageKey(path))
 }
 
-export default function LocalNoteInline({ summary, onClose }: LocalNoteInlineProps) {
+export default function LocalNoteInline({
+  summary,
+  onClose,
+  reminderCompletionControl,
+  reminderTone = 'default',
+}: LocalNoteInlineProps) {
   const { saveDocument, deleteDocument, moveDocument } = useVaultStore()
 
   const [editorKey, setEditorKey] = useState(0)
@@ -77,7 +84,6 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
   const [isDirty, setIsDirty] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [renameFileOpen, setRenameFileOpen] = useState(false)
-  const [documentTitle, setDocumentTitle] = useState(summary.title)
   const [frontmatter, setFrontmatter] = useState<string | null>(null)
   const [editorDocument, setEditorDocument] = useState<TipTapDocument>(EMPTY_DOC)
   const [editorPlainText, setEditorPlainText] = useState('')
@@ -106,7 +112,6 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       setFrontmatter(rawParts.frontmatter)
       setEditorDocument(storedDraft?.editorDocument ?? markdownToTipTapDocument(rawParts.body))
       setEditorPlainText(rawParts.body)
-      setDocumentTitle(loadedDocument.title)
       setIsDirty(!!storedDraft)
       setPendingFolderId(storedDraft?.pendingFolderId ?? summary.parentPath)
       setPendingFileName(storedDraft?.pendingFileName ?? stripMarkdownExtension(summary.name))
@@ -243,7 +248,6 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
             }
           }
         } else {
-          setDocumentTitle(savedDocument.title)
           setFrontmatter(nextFrontmatter)
           setIsDirty(false)
           clearDraft(summary.path)
@@ -323,7 +327,15 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
   }
 
   return (
-    <div className="group flex flex-col p-4 sm:p-6 rounded-[1.25rem] bg-white border transition-colors duration-300 border-stone-100 shadow-soft hover:border-stone-200 hover:shadow-soft-lg">
+    <div
+      className={`group flex flex-col p-4 sm:p-6 rounded-[1.25rem] border transition-colors duration-300 shadow-soft hover:shadow-soft-lg ${
+        reminderTone === 'completed'
+          ? 'bg-emerald-50/70 border-emerald-100 hover:border-emerald-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_-18px_-18px_42px_rgba(16,185,129,0.10),0_4px_20px_0_rgb(0_0_0_/_0.05)]'
+          : reminderTone === 'overdue'
+            ? 'bg-rose-50/70 border-rose-100 hover:border-rose-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_-18px_-18px_42px_rgba(244,63,94,0.08),0_4px_20px_0_rgb(0_0_0_/_0.05)]'
+            : 'bg-white border-stone-100 hover:border-stone-200'
+      }`}
+    >
       <NoteEditor
         key={editorKey}
         content={editorDocument}
@@ -347,18 +359,28 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
           <FolderSelector folderId={pendingFolderId} onChange={(newFolderId) => {
             void handleMove(newFolderId)
           }} />
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
-            {documentTitle}
-          </span>
+          {reminderCompletionControl}
           <span className="text-xs text-stone-400">{formatDate(updatedAt)}</span>
           {detectedDate && (
             <button
               type="button"
               onClick={handleClearDetectedDate}
-              className="group/date inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 transition-colors hover:bg-amber-100"
+              className={`group/date inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-xs transition-colors ${
+                reminderTone === 'completed'
+                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                  : reminderTone === 'overdue'
+                    ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+              }`}
             >
-              <span>Due {detectedDate.raw} → {formatDetectedDate(detectedDate.iso)}</span>
-              <span className="hidden text-[11px] font-medium text-amber-600 group-hover/date:inline">
+              <span>Due {formatDetectedDate(detectedDate.iso)}</span>
+              <span className={`hidden text-[11px] font-medium group-hover/date:inline ${
+                reminderTone === 'completed'
+                  ? 'text-emerald-700'
+                  : reminderTone === 'overdue'
+                    ? 'text-rose-700'
+                    : 'text-amber-600'
+              }`}>
                 Remove
               </span>
             </button>

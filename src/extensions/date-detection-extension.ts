@@ -134,7 +134,7 @@ function buildDecorations(
   // Inline decoration — pill cliccabile, nessun widget separato
   decorations.push(
     Decoration.inline(pos.from, pos.to, {
-      class: 'inline-block rounded-full border border-amber-200 bg-amber-100 px-2 py-[1px] text-[0.8rem] font-medium text-amber-800 transition-colors duration-150 hover:border-amber-300 hover:bg-amber-200',
+      class: 'note-editor-date-highlight',
       'data-raw': match.text,
     }),
   )

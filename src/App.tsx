@@ -17,7 +17,7 @@ function App() {
     searchQuery,
     runSearch,
   } = useVaultStore()
-  const { selectedFolderId } = useNavigationStore()
+  const { selectedFolderId, selectedView } = useNavigationStore()
 
   useEffect(() => {
     if (!currentVault || !window.__TAURI_INTERNALS__) {
@@ -52,7 +52,7 @@ function App() {
   if (status === 'ready' && currentVault) {
     return (
       <AppLayout>
-        <NoteList folderId={selectedFolderId} />
+        <NoteList folderId={selectedFolderId} view={selectedView} />
       </AppLayout>
     )
   }

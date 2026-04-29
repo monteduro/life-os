@@ -67,6 +67,19 @@
       @apply float-left text-stone-400 pointer-events-none h-0;
     }
   }
+
+  .note-editor-content .tiptap.ProseMirror .note-editor-date-highlight {
+    background: rgb(254 243 199 / 0.85);
+    color: inherit;
+    border-radius: 0.35rem;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-color 150ms ease;
+  }
+
+  .note-editor-content .tiptap.ProseMirror .note-editor-date-highlight:hover {
+    background: rgb(253 230 138 / 0.9);
+  }
 }
 
 /* App-specific styles - use Tailwind utilities where possible */

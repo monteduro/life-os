@@ -35,6 +35,9 @@ struct VaultDocumentSummary {
   title: String,
   parent_path: Option<String>,
   excerpt: String,
+  due_date: Option<String>,
+  due_date_raw: Option<String>,
+  completed_at: Option<String>,
   updated_at: Option<String>,
 }
 
@@ -511,6 +514,9 @@ fn search_local_index(
         title: row.get(2)?,
         parent_path: row.get(3)?,
         excerpt: row.get(4)?,
+        due_date: None,
+        due_date_raw: None,
+        completed_at: None,
         updated_at: row.get(5)?,
       })
     })
@@ -572,6 +578,9 @@ fn build_document_summary(
     title: extract_title(&body, path),
     parent_path,
     excerpt: build_excerpt(&body),
+    due_date: read_frontmatter_value(&raw_content, "due_date"),
+    due_date_raw: read_frontmatter_value(&raw_content, "due_date_raw"),
+    completed_at: read_frontmatter_value(&raw_content, "completed_at"),
     updated_at: read_modified_timestamp(path),
   })
 }
@@ -1186,6 +1195,45 @@ fn strip_frontmatter(content: &str) -> String {
   } else {
     content.trim().to_string()
   }
+}
+
+fn read_frontmatter_value(content: &str, key: &str) -> Option<String> {
+  let mut lines = content.lines();
+  if lines.next() != Some("---") {
+    return None;
+  }
+
+  let prefix = format!("{key}:");
+
+  for line in lines {
+    if line == "---" {
+      break;
+    }
+
+    let trimmed = line.trim();
+    if !trimmed.starts_with(&prefix) {
+      continue;
+    }
+
+    let raw_value = trimmed[prefix.len()..].trim();
+    return Some(parse_frontmatter_scalar(raw_value));
+  }
+
+  None
+}
+
+fn parse_frontmatter_scalar(value: &str) -> String {
+  if value.len() >= 2 && value.starts_with('"') && value.ends_with('"') {
+    return value[1..value.len() - 1]
+      .replace("\\\"", "\"")
+      .replace("\\\\", "\\");
+  }
+
+  if value.len() >= 2 && value.starts_with('\'') && value.ends_with('\'') {
+    return value[1..value.len() - 1].replace("\\'", "'");
+  }
+
+  value.to_string()
 }
 
 fn extract_title(content: &str, path: &Path) -> String {

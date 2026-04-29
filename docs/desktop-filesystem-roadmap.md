@@ -1,6 +1,6 @@
 # Desktop Filesystem Roadmap
 
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Locked Decisions
 
@@ -234,6 +234,8 @@ These are the main files to migrate first:
 - [x] Persist selected due dates across reloads and local draft recovery.
 - [x] Support multiple detected date candidates with explicit reminder selection.
 - [x] Persist dismissed reminder candidates so removed dates do not reappear on reload.
+- [x] Add an initial `Upcoming` reminder view with `Overdue`, `Today`, and `Later` grouping.
+- [x] Add reminder completion state with reversible `Done` controls and completed visibility filters.
 - [ ] Decide how note-to-note links are represented in markdown and in the index.
 - [ ] Extract note title and plain text summary from markdown for preview cards.
 - [x] Add save semantics suitable for local files:
@@ -258,9 +260,9 @@ These are the main files to migrate first:
    - preview/backlink behavior
 
 4. `Reminder/calendar views`
-   - surface persisted due dates in dedicated views
-   - define reminder grouping and sorting
-   - prepare the first calendar-oriented screen
+   - extend the current `Upcoming` view into richer calendar-style surfaces
+   - refine completion flows, rescheduling, and reminder actions
+   - prepare the first true calendar-oriented screen
 
 5. `Repository hygiene`
    - add a real `CHANGELOG.md`

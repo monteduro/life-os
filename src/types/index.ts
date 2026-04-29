@@ -28,6 +28,7 @@ export interface Note {
   folder_id: string | null      // null = inbox
   due_date: string | null
   due_date_raw: string | null
+  completed_at?: string | null
   is_task: boolean
   is_archived: boolean
   sort_order: number

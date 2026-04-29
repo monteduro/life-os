@@ -20,6 +20,7 @@ interface FrontmatterFieldUpdates {
   dueDate?: string | null
   dueDateRaw?: string | null
   dismissedDueDateRaws?: string[]
+  completedAt?: string | null
 }
 
 const EMPTY_DOCUMENT: TipTapDocument = {
@@ -69,6 +70,7 @@ export function readDateFrontmatter(frontmatter: string | null) {
     dueDate: readFrontmatterValue(frontmatter, 'due_date'),
     dueDateRaw: readFrontmatterValue(frontmatter, 'due_date_raw'),
     dismissedDueDateRaws: parseStringArrayFrontmatterValue(dismissedDueDateRawsValue),
+    completedAt: readFrontmatterValue(frontmatter, 'completed_at'),
   }
 }
 
@@ -76,7 +78,7 @@ export function updateDateFrontmatter(frontmatter: string | null, updates: Front
   const nextEntries = new Map<string, string>()
 
   for (const [key, value] of parseFrontmatterEntries(frontmatter)) {
-    if (key !== 'due_date' && key !== 'due_date_raw' && key !== 'dismissed_due_date_raws') {
+    if (key !== 'due_date' && key !== 'due_date_raw' && key !== 'dismissed_due_date_raws' && key !== 'completed_at') {
       nextEntries.set(key, value)
     }
   }
@@ -91,6 +93,10 @@ export function updateDateFrontmatter(frontmatter: string | null, updates: Front
 
   if (updates.dismissedDueDateRaws && updates.dismissedDueDateRaws.length > 0) {
     nextEntries.set('dismissed_due_date_raws', JSON.stringify(updates.dismissedDueDateRaws))
+  }
+
+  if (updates.completedAt) {
+    nextEntries.set('completed_at', updates.completedAt)
   }
 
   if (nextEntries.size === 0) {

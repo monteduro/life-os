@@ -12,7 +12,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Database, Folder as FolderIcon, FolderPlus } from 'lucide-react'
+import { CalendarClock, Database, Folder as FolderIcon, FolderPlus } from 'lucide-react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import type { LocalIndexStats } from '../../core/index/types'
 import { useNavigationStore } from '../../stores/navigationStore'
@@ -34,7 +34,7 @@ export default function Sidebar() {
   const [overFolderId, setOverFolderId] = useState<string | null>(null)
   const [pendingMoveFolderId, setPendingMoveFolderId] = useState<string | null>(null)
 
-  const { selectedFolderId, sidebarOpen, selectFolder, selectInbox } = useNavigationStore()
+  const { selectedFolderId, selectedView, sidebarOpen, selectFolder, selectInbox, selectUpcoming } = useNavigationStore()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const folderTree = currentVault ? mapVaultFoldersToAppFolders(currentVault.folders) : []
@@ -47,7 +47,8 @@ export default function Sidebar() {
   const handleCreateFolder = async (name: string) => {
     if (!currentVault) return
 
-    const folderPath = await createFolder(selectedFolderId, name.trim())
+    const parentFolderId = selectedView === 'folder' ? selectedFolderId : null
+    const folderPath = await createFolder(parentFolderId, name.trim())
     if (!folderPath) return
 
     const folderName = folderPath.split('/').pop() ?? name.trim()
@@ -103,8 +104,9 @@ export default function Sidebar() {
         <SidebarContent
           folderTree={folderTree}
           inboxCount={inboxCount}
-          selectedFolderId={selectedFolderId}
+          selectedView={selectedView}
           selectInbox={selectInbox}
+          selectUpcoming={selectUpcoming}
           onCreateFolder={() => setCreateFolderOpen(true)}
           currentIndex={currentIndex}
           indexError={indexError}
@@ -133,8 +135,9 @@ export default function Sidebar() {
         <SidebarContent
           folderTree={folderTree}
           inboxCount={inboxCount}
-          selectedFolderId={selectedFolderId}
+          selectedView={selectedView}
           selectInbox={selectInbox}
+          selectUpcoming={selectUpcoming}
           onCreateFolder={() => setCreateFolderOpen(true)}
           currentIndex={currentIndex}
           indexError={indexError}
@@ -154,7 +157,7 @@ export default function Sidebar() {
       <TextPromptDialog
         open={createFolderOpen}
         title="Create folder"
-        description={selectedFolderId ? 'The new folder will be created inside the currently selected folder.' : 'The new folder will be created at the vault root.'}
+        description={selectedView === 'folder' && selectedFolderId ? 'The new folder will be created inside the currently selected folder.' : 'The new folder will be created at the vault root.'}
         placeholder="Folder name"
         confirmLabel="Create"
         cancelLabel="Cancel"
@@ -191,8 +194,9 @@ function handleWindowDragMouseDown(event: ReactMouseEvent<HTMLElement>) {
 interface SidebarContentProps {
   folderTree: Folder[]
   inboxCount: number
-  selectedFolderId: string | null
+  selectedView: 'inbox' | 'folder' | 'upcoming'
   selectInbox: () => void
+  selectUpcoming: () => void
   onCreateFolder: () => void
   currentIndex: LocalIndexStats | null
   indexError: string | null
@@ -211,8 +215,9 @@ interface SidebarContentProps {
 function SidebarContent({
   folderTree,
   inboxCount,
-  selectedFolderId,
+  selectedView,
   selectInbox,
+  selectUpcoming,
   onCreateFolder,
   currentIndex,
   indexError,
@@ -283,9 +288,18 @@ function SidebarContent({
             Icon={getIcon(null, 'inbox')}
             label="Inbox"
             count={inboxCount}
-            isActive={selectedFolderId === null}
+            isActive={selectedView === 'inbox'}
             onClick={selectInbox}
             className={overFolderId === ROOT_DROP_ID ? 'ring-1 ring-stone-300 bg-stone-100/80' : undefined}
+          />
+        </div>
+
+        <div className="mb-1">
+          <SidebarNavItem
+            Icon={CalendarClock}
+            label="Upcoming"
+            isActive={selectedView === 'upcoming'}
+            onClick={selectUpcoming}
           />
         </div>
 

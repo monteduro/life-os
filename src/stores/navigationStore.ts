@@ -4,6 +4,7 @@ import { devtools } from 'zustand/middleware'
 // ─── Navigation State Interface ──────────────────────────────────────────────
 
 interface NavigationState {
+  selectedView: 'inbox' | 'folder' | 'upcoming'
   // Folder corrente (null = inbox)
   selectedFolderId: string | null
   selectedFolderName: string | null    // per display nel header
@@ -17,6 +18,7 @@ interface NavigationState {
   // Actions
   selectFolder: (folderId: string | null, name?: string | null) => void
   selectInbox: () => void
+  selectUpcoming: () => void
   toggleFolder: (folderId: string) => void
   expandFolder: (folderId: string) => void
   collapseFolder: (folderId: string) => void
@@ -30,6 +32,7 @@ export const useNavigationStore = create<NavigationState>()(
   devtools(
     (set) => ({
       // Initial state
+      selectedView: 'inbox',
       selectedFolderId: null,
       selectedFolderName: null,
       expandedFolders: new Set<string>(),
@@ -38,16 +41,23 @@ export const useNavigationStore = create<NavigationState>()(
       // Actions
       selectFolder: (folderId, name = null) =>
         set(
-          { selectedFolderId: folderId, selectedFolderName: name },
+          { selectedView: folderId === null ? 'inbox' : 'folder', selectedFolderId: folderId, selectedFolderName: name },
           false,
           'selectFolder'
         ),
 
       selectInbox: () =>
         set(
-          { selectedFolderId: null, selectedFolderName: null },
+          { selectedView: 'inbox', selectedFolderId: null, selectedFolderName: null },
           false,
           'selectInbox'
+        ),
+
+      selectUpcoming: () =>
+        set(
+          { selectedView: 'upcoming', selectedFolderId: null, selectedFolderName: 'Upcoming' },
+          false,
+          'selectUpcoming'
         ),
 
       toggleFolder: (folderId) =>

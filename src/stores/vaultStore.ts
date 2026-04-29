@@ -8,7 +8,13 @@ import {
   activeDocumentRepository,
   activeWorkspaceRepository,
 } from '../core/storage/activeStorage'
-import { rewriteFolderMentionTargets } from '../core/vault/markdownDocument'
+import {
+  mergeRawVaultDocument,
+  readDateFrontmatter,
+  rewriteFolderMentionTargets,
+  splitRawVaultDocument,
+  updateDateFrontmatter,
+} from '../core/vault/markdownDocument'
 import { toVaultRelativePath } from '../core/vault/paths'
 import type { VaultDocument, VaultDocumentSummary, VaultSnapshot } from '../core/vault/types'
 
@@ -45,6 +51,7 @@ interface VaultState {
   moveFolder: (path: string, targetParentPath: string | null) => Promise<string | null>
   createDocument: (parentPath: string | null, title?: string) => Promise<VaultDocument | null>
   moveDocument: (path: string, targetFolderPath: string | null, fileName?: string) => Promise<VaultDocument | null>
+  setReminderCompleted: (path: string, completed: boolean) => Promise<VaultDocument | null>
   saveDocument: (path: string, content: string) => Promise<VaultDocument | null>
   deleteDocument: (path: string) => Promise<void>
   setSearchQuery: (query: string) => void
@@ -409,6 +416,42 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Unable to move the document.',
+      })
+      return null
+    }
+  },
+
+  async setReminderCompleted(path, completed) {
+    try {
+      const document = await activeDocumentRepository.readDocument(path)
+      const parts = splitRawVaultDocument(document.rawContent)
+      const nextFrontmatter = updateDateFrontmatter(parts.frontmatter, {
+        dueDate: readDateFrontmatter(parts.frontmatter).dueDate,
+        dueDateRaw: readDateFrontmatter(parts.frontmatter).dueDateRaw,
+        dismissedDueDateRaws: readDateFrontmatter(parts.frontmatter).dismissedDueDateRaws,
+        completedAt: completed ? new Date().toISOString() : null,
+      })
+      const nextRawContent = mergeRawVaultDocument({
+        frontmatter: nextFrontmatter,
+        body: parts.body,
+      })
+      const saved = await activeDocumentRepository.saveDocument({ path, content: nextRawContent })
+      await refreshCurrentVaultSnapshot()
+      await get().refreshIndexHealth()
+      if (get().searchQuery.trim()) {
+        await get().runSearch(get().searchQuery)
+      }
+      if (get().selectedDocumentPath === path) {
+        set({
+          selectedDocument: saved,
+          selectedDocumentPath: saved.path,
+        })
+      }
+      set({ error: null })
+      return saved
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Unable to update reminder completion state.',
       })
       return null
     }

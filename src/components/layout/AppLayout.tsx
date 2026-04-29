@@ -22,7 +22,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const [renameFolderOpen, setRenameFolderOpen] = useState(false)
   const [moveFolderOpen, setMoveFolderOpen] = useState(false)
-  const { sidebarOpen, setSidebarOpen, selectedFolderId, selectedFolderName, selectFolder } = useNavigationStore()
+  const { sidebarOpen, setSidebarOpen, selectedFolderId, selectedFolderName, selectedView, selectFolder } = useNavigationStore()
   const {
     currentVault,
     moveFolder,
@@ -37,7 +37,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   } = useVaultStore()
   const currentTitle = searchQuery.trim()
     ? 'Search'
-    : selectedFolderName ?? 'Inbox'
+    : selectedView === 'upcoming'
+      ? 'Upcoming'
+      : selectedFolderName ?? 'Inbox'
   const selectedFolderNode = useMemo(
     () => (currentVault && selectedFolderId ? findFolderNode(currentVault.folders, selectedFolderId) : null),
     [currentVault, selectedFolderId],
