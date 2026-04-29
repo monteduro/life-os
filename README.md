@@ -99,8 +99,52 @@ It is there only as short-term migration reference, not as active product runtim
 
 - Node.js
 - npm
-- Rust toolchain via `rustup`
+- Rust toolchain via `rustup` (`cargo` must be installed and available in your `PATH`)
 - Xcode Command Line Tools on macOS
+
+### Rust / Tauri Prerequisite
+
+`npm run tauri:dev` requires `cargo`.
+
+If you see an error like:
+
+```bash
+failed to run 'cargo metadata' command
+```
+
+it means the Rust toolchain is not installed correctly, or `cargo` is not available in your shell `PATH`.
+
+Install Rust with:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+```
+
+Then restart your terminal and verify:
+
+```bash
+rustc --version
+cargo --version
+```
+
+If `cargo --version` fails, Tauri will not start.
+
+If the installer fails while trying to update shell profile files, use the fallback below instead:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshenv
+source ~/.zshenv
+```
+
+Then verify again:
+
+```bash
+cargo --version
+rustc --version
+```
+
+On macOS with `zsh`, this is usually enough.
 
 ### Install
 
