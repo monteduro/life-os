@@ -25,6 +25,39 @@ const EMPTY_DOC: TipTapDocument = {
   content: [{ type: 'paragraph' }],
 }
 
+const DRAFT_STORAGE_PREFIX = 'life-os.local-note-draft:'
+
+interface StoredLocalDraft {
+  editorDocument: TipTapDocument
+  pendingFolderId: string | null
+  pendingFileName: string
+}
+
+function getDraftStorageKey(path: string) {
+  return `${DRAFT_STORAGE_PREFIX}${path}`
+}
+
+function loadDraft(path: string): StoredLocalDraft | null {
+  try {
+    const raw = localStorage.getItem(getDraftStorageKey(path))
+    return raw ? (JSON.parse(raw) as StoredLocalDraft) : null
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(path: string, draft: StoredLocalDraft) {
+  try {
+    localStorage.setItem(getDraftStorageKey(path), JSON.stringify(draft))
+  } catch {
+    // Ignore quota/storage errors: drafts are best-effort.
+  }
+}
+
+function clearDraft(path: string) {
+  localStorage.removeItem(getDraftStorageKey(path))
+}
+
 export default function LocalNoteInline({ summary, onClose }: LocalNoteInlineProps) {
   const { saveDocument, deleteDocument, moveDocument } = useVaultStore()
 
@@ -51,13 +84,14 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
     try {
       const loadedDocument = await activeDocumentRepository.readDocument(summary.path)
       const rawParts = splitRawVaultDocument(loadedDocument.rawContent)
+      const storedDraft = loadDraft(summary.path)
 
       setFrontmatter(rawParts.frontmatter)
-      setEditorDocument(markdownToTipTapDocument(rawParts.body))
+      setEditorDocument(storedDraft?.editorDocument ?? markdownToTipTapDocument(rawParts.body))
       setDocumentTitle(loadedDocument.title)
-      setIsDirty(false)
-      setPendingFolderId(summary.parentPath)
-      setPendingFileName(stripMarkdownExtension(summary.name))
+      setIsDirty(!!storedDraft)
+      setPendingFolderId(storedDraft?.pendingFolderId ?? summary.parentPath)
+      setPendingFileName(storedDraft?.pendingFileName ?? stripMarkdownExtension(summary.name))
       setEditorKey((value) => value + 1)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Unable to read the document.')
@@ -69,6 +103,27 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
   useEffect(() => {
     void loadDocument()
   }, [loadDocument])
+
+  useEffect(() => {
+    if (isLoading) {
+      return
+    }
+
+    if (!isDirty) {
+      clearDraft(summary.path)
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      saveDraft(summary.path, {
+        editorDocument,
+        pendingFolderId,
+        pendingFileName,
+      })
+    }, 500)
+
+    return () => window.clearTimeout(timer)
+  }, [editorDocument, isDirty, isLoading, pendingFileName, pendingFolderId, summary.path])
 
   const handleChange = useCallback((doc: TipTapDocument) => {
     setEditorDocument(doc)
@@ -92,12 +147,17 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
 
         if (shouldMoveOrRename) {
           const movedDocument = await moveDocument(savedDocument.path, pendingFolderId, pendingFileName)
-          if (movedDocument && onClose) {
-            onClose()
+          if (movedDocument) {
+            clearDraft(summary.path)
+            setIsDirty(false)
+            if (onClose) {
+              onClose()
+            }
           }
         } else {
           setDocumentTitle(savedDocument.title)
           setIsDirty(false)
+          clearDraft(summary.path)
         }
       }
     } catch (error) {
@@ -113,6 +173,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
 
     try {
       await deleteDocument(summary.path)
+      clearDraft(summary.path)
       onClose?.()
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Unable to delete the document.')
