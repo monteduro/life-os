@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryResult, type UseMutationResult } from '@tanstack/react-query'
 import { apiClient } from './client'
-import type { ApiResponse } from '../types'
+import type { ApiResponse } from '../../types'
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 

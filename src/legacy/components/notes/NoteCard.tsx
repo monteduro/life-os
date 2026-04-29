@@ -1,7 +1,7 @@
 import type { Note } from '../../api/notesApi'
 import { useUpdateNote } from '../../api/notesApi'
-import { formatDate } from '../../lib/utils'
-import FolderSelector from './FolderSelector'
+import { formatDate } from '../../../lib/utils'
+import FolderSelector from '../../../components/notes/FolderSelector'
 interface NoteCardProps {
   note: Note
   onClick: () => void
@@ -24,13 +24,13 @@ export default function NoteCard({ note, onClick }: NoteCardProps) {
           onChange={(newFolderId) => updateNote({ folder_id: newFolderId })}
         />
         <span className="ml-auto text-xs text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity">
-          clicca per modificare →
+          click to edit →
         </span>
       </div>
 
       {/* Content preview */}
       <p className="text-sm text-stone-500 leading-relaxed line-clamp-3">
-        {note.content_plain || <span className="italic text-stone-300">Nota vuota</span>}
+        {note.content_plain || <span className="italic text-stone-300">Empty note</span>}
       </p>
 
       {/* Footer */}

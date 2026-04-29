@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useCreateNote, useUpdateNote, useDeleteNote, type Note, type TipTapDocument } from '../../api/notesApi'
 import { useCurrentUser } from '../../api/authApi'
-import NoteEditor from '../editor/NoteEditor'
-import FolderSelector from './FolderSelector'
-import { formatDate } from '../../lib/utils'
-import type { DetectedDate } from '../../extensions/date-detection-extension'
+import NoteEditor from '../../../components/editor/NoteEditor'
+import FolderSelector from '../../../components/notes/FolderSelector'
+import { formatDate } from '../../../lib/utils'
+import type { DetectedDate } from '../../../extensions/date-detection-extension'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ function loadDraft(): StoredDraft | null {
 function saveDraftToStorage(draft: StoredDraft) {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-  } catch { /* quota exceeded o simili: ignora */ }
+  } catch { /* Ignore quota/storage errors. */ }
 }
 
 function clearDraft() {
@@ -43,7 +43,7 @@ function clearDraft() {
 // ─── Variante CREAZIONE ───────────────────────────────────────────────────────
 
 interface NoteCreateFormProps {
-  folderId?: string | null  // null = inbox
+  folderId?: string | null // null = inbox
 }
 
 function NoteCreateForm({ folderId = null }: NoteCreateFormProps) {
@@ -66,7 +66,7 @@ function NoteCreateForm({ folderId = null }: NoteCreateFormProps) {
     setDetectedDate(date)
   }, [])
 
-  // Persisti in localStorage con debounce (1s) per non scrivere ad ogni tasto
+  // Persist to localStorage with debounce (1s) to avoid writing on every keystroke.
   useEffect(() => {
     if (!contentPlain.trim()) return
     const timer = setTimeout(() => {
@@ -227,7 +227,7 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 mt-2 border-t border-stone-100">
-        {/* Meta info sulla sinistra */}
+        {/* Meta info on the left */}
         <div className="flex items-center gap-2 flex-wrap">
           <FolderSelector
             folderId={note.folder_id}
@@ -247,7 +247,7 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
           <span className="text-xs text-stone-400 ml-1">{formatDate(note.updated_at)}</span>
         </div>
 
-        {/* Actions sulla destra */}
+        {/* Actions on the right */}
         <div className="flex items-center gap-3 flex-wrap ml-auto">
           {/* Delete section */}
           {isConfirmingDelete ? (
@@ -317,13 +317,12 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
   )
 }
 
-// ─── Export pubblico ──────────────────────────────────────────────────────────
+// ─── Public export ────────────────────────────────────────────────────────────
 
 interface NoteInlineProps {
   note?: Note
   onClose?: () => void
-  folderId?: string | null  // null = inbox
-
+  folderId?: string | null // null = inbox
 }
 
 export default function NoteInline({ note, onClose, folderId = null }: NoteInlineProps) {

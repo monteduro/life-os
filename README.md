@@ -77,6 +77,12 @@ Planned next:
 The working roadmap lives in [docs/desktop-filesystem-roadmap.md](docs/desktop-filesystem-roadmap.md).
 A proper project changelog should be added soon as the pace of UI and architecture changes increases.
 
+## Legacy Code
+
+Some code from the older web/API-first implementation is temporarily kept in `src/legacy`.
+
+It is there only as short-term migration reference, not as active product runtime and not as the planned basis for future remote mode.
+
 ## Tech Stack
 
 - React

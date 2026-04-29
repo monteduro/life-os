@@ -41,7 +41,7 @@ import { TableButton } from "./TableButton"
 import { TableToolbar } from "./TableToolbar"
 
 // --- Types ---
-import type { TipTapDocument } from "../../api/notesApi"
+import type { TipTapDocument } from "../../types"
 
 interface NoteEditorProps {
   content?: TipTapDocument

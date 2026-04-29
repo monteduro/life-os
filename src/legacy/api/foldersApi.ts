@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createEntityApi } from './createEntityApi'
 import { apiClient } from './client'
-import type { Folder, CreateFolderDto, UpdateFolderDto, ReorderFolderItem } from '../types'
+import type { Folder, CreateFolderDto, UpdateFolderDto, ReorderFolderItem } from '../../types'
 
 // ─── Base CRUD Operations ────────────────────────────────────────────────────
 

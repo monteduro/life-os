@@ -11,11 +11,11 @@ export type {
   CreateNoteDto,
   UpdateNoteDto,
   ApiResponse,
-} from '../types'
+} from '../../types'
 
-import type { Note, CreateNoteDto, UpdateNoteDto, ApiResponse } from '../types'
+import type { Note, CreateNoteDto, UpdateNoteDto, ApiResponse } from '../../types'
 
-// --- Query keys centralizzate ---
+// --- Centralized query keys ---
 
 export const noteKeys = {
   all: ['notes'] as const,
@@ -27,10 +27,10 @@ export const noteKeys = {
 // --- Hooks ---
 
 /**
- * GET /notes — filtrato per folder.
+ * GET /notes — filtered by folder.
  * folderId === null  → inbox (folder_id=null)
  * folderId === string → notes for a specific folder
- * folderId === undefined → tutte le note (nessun filtro)
+ * folderId === undefined → all notes (no filter)
  */
 export const useNotes = (folderId?: string | null) => {
   const hasFilter = folderId !== undefined
