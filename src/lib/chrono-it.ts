@@ -34,17 +34,27 @@ function resolveLocale(lang?: string | null): ChronoLocale {
   return SUPPORTED_LOCALES[base] ?? 'en'
 }
 
+function getLocaleChain(lang?: string | null): ChronoLocale[] {
+  const primary = resolveLocale(lang)
+  const fallbacks: ChronoLocale[] = ['en']
+  return Array.from(new Set([primary, ...fallbacks]))
+}
+
 /**
  * Parses dates from text using the provided locale.
  * Priority: lang param > navigator.language > 'en'
  */
 export function parseDates(text: string, ref?: Date, lang?: string | null) {
-  const locale = resolveLocale(lang)
-  const parser = chrono[locale]
+  for (const locale of getLocaleChain(lang)) {
+    const parser = chrono[locale]
 
-  // chrono[locale] is an object with .parse(), .parseDate(), and so on.
-  if (parser && typeof parser === 'object' && 'parse' in parser) {
-    return (parser as typeof chrono.en).parse(text, ref, { forwardDate: true })
+    // chrono[locale] is an object with .parse(), .parseDate(), and so on.
+    if (parser && typeof parser === 'object' && 'parse' in parser) {
+      const results = (parser as typeof chrono.en).parse(text, ref, { forwardDate: true })
+      if (results.length > 0) {
+        return results
+      }
+    }
   }
 
   // Safe fallback to English

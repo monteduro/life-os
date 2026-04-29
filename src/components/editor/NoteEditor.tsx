@@ -53,6 +53,7 @@ interface NoteEditorProps {
   editorKey?: number
   autofocus?: boolean
   preferredDateRaw?: string
+  dismissedDateRaws?: string[]
   /** Lingua per il date detection (es. "it", "en"). Fallback: navigator.language */
   lang?: string | null
 }
@@ -67,6 +68,7 @@ export default function NoteEditor({
   editorKey,
   autofocus = false,
   preferredDateRaw,
+  dismissedDateRaws = [],
   lang,
 }: NoteEditorProps) {
   const handleUpdate = useCallback(
@@ -81,6 +83,7 @@ export default function NoteEditor({
 
   const onSaveRef = useRef(onSave)
   useEffect(() => { onSaveRef.current = onSave }, [onSave])
+  const dismissedDateRawsKey = dismissedDateRaws.join('|')
 
   const editor = useEditor(
     {
@@ -114,7 +117,12 @@ export default function NoteEditor({
             resizable: true
           },
         }),
-        DateDetectionExtension.configure({ onDateDetected, preferredRaw: preferredDateRaw, lang }),
+        DateDetectionExtension.configure({
+          onDateDetected,
+          preferredRaw: preferredDateRaw,
+          dismissedRaws: dismissedDateRaws,
+          lang,
+        }),
         Mention.extend({
           // Add a `type` attribute to store the mention entity type (e.g. 'folder')
           addAttributes() {
@@ -145,7 +153,7 @@ export default function NoteEditor({
       content: content ?? undefined,
       onUpdate: handleUpdate,
     },
-    [editorKey],
+    [editorKey, preferredDateRaw, dismissedDateRawsKey, lang],
   )
 
   // Sync content from outside when editorKey changes (reset)

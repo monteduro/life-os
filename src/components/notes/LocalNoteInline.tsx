@@ -6,14 +6,18 @@ import { activeDocumentRepository } from '../../core/storage/activeStorage'
 import { formatDate } from '../../lib/utils'
 import { useVaultStore } from '../../stores/vaultStore'
 import FolderSelector from './FolderSelector'
+import { parseDates } from '../../lib/chrono-it'
 import {
   markdownToTipTapDocument,
   mergeRawVaultDocument,
+  readDateFrontmatter,
   splitRawVaultDocument,
   tipTapDocumentToMarkdown,
+  updateDateFrontmatter,
 } from '../../core/vault/markdownDocument'
 import type { TipTapDocument } from '../../types'
 import type { VaultDocumentSummary } from '../../core/vault/types'
+import type { DetectedDate } from '../../extensions/date-detection-extension'
 
 interface LocalNoteInlineProps {
   summary: VaultDocumentSummary
@@ -31,7 +35,11 @@ interface StoredLocalDraft {
   editorDocument: TipTapDocument
   pendingFolderId: string | null
   pendingFileName: string
+  detectedDate: DetectedDate | null
+  dismissedDateRaws: string[]
 }
+
+type DateSelectionMode = 'auto' | 'manual' | null
 
 function getDraftStorageKey(path: string) {
   return `${DRAFT_STORAGE_PREFIX}${path}`
@@ -72,8 +80,13 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
   const [documentTitle, setDocumentTitle] = useState(summary.title)
   const [frontmatter, setFrontmatter] = useState<string | null>(null)
   const [editorDocument, setEditorDocument] = useState<TipTapDocument>(EMPTY_DOC)
+  const [editorPlainText, setEditorPlainText] = useState('')
   const [pendingFolderId, setPendingFolderId] = useState<string | null>(summary.parentPath)
   const [pendingFileName, setPendingFileName] = useState<string>(stripMarkdownExtension(summary.name))
+  const [detectedDate, setDetectedDate] = useState<DetectedDate | null>(null)
+  const [dateCandidates, setDateCandidates] = useState<DetectedDate[]>([])
+  const [dismissedDateRaws, setDismissedDateRaws] = useState<string[]>([])
+  const [dateSelectionMode, setDateSelectionMode] = useState<DateSelectionMode>(null)
 
   const updatedAt = useMemo(() => normalizeTimestamp(summary.updatedAt), [summary.updatedAt])
 
@@ -85,13 +98,21 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       const loadedDocument = await activeDocumentRepository.readDocument(summary.path)
       const rawParts = splitRawVaultDocument(loadedDocument.rawContent)
       const storedDraft = loadDraft(summary.path)
+      const dateMetadata = readDateFrontmatter(rawParts.frontmatter)
+      const persistedDate = dateMetadata.dueDate && dateMetadata.dueDateRaw
+        ? { iso: dateMetadata.dueDate, raw: dateMetadata.dueDateRaw }
+        : null
 
       setFrontmatter(rawParts.frontmatter)
       setEditorDocument(storedDraft?.editorDocument ?? markdownToTipTapDocument(rawParts.body))
+      setEditorPlainText(rawParts.body)
       setDocumentTitle(loadedDocument.title)
       setIsDirty(!!storedDraft)
       setPendingFolderId(storedDraft?.pendingFolderId ?? summary.parentPath)
       setPendingFileName(storedDraft?.pendingFileName ?? stripMarkdownExtension(summary.name))
+      setDetectedDate(storedDraft?.detectedDate ?? persistedDate)
+      setDismissedDateRaws(storedDraft?.dismissedDateRaws ?? dateMetadata.dismissedDueDateRaws)
+      setDateSelectionMode((storedDraft?.detectedDate ?? persistedDate) ? 'manual' : null)
       setEditorKey((value) => value + 1)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Unable to read the document.')
@@ -119,14 +140,76 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
         editorDocument,
         pendingFolderId,
         pendingFileName,
+        detectedDate,
+        dismissedDateRaws,
       })
     }, 500)
 
     return () => window.clearTimeout(timer)
-  }, [editorDocument, isDirty, isLoading, pendingFileName, pendingFolderId, summary.path])
+  }, [detectedDate, dismissedDateRaws, editorDocument, isDirty, isLoading, pendingFileName, pendingFolderId, summary.path])
 
-  const handleChange = useCallback((doc: TipTapDocument) => {
+  useEffect(() => {
+    const nextCandidates = parseDates(editorPlainText)
+      .map((result) => ({
+        iso: result.date().toISOString(),
+        raw: result.text,
+      }))
+      .filter((candidate) => !dismissedDateRaws.includes(candidate.raw))
+      .filter((candidate, index, list) => (
+        list.findIndex((entry) => entry.raw === candidate.raw && entry.iso === candidate.iso) === index
+      ))
+
+    setDateCandidates(nextCandidates)
+    setDetectedDate((current) => {
+      if (current && nextCandidates.some((candidate) => candidate.raw === current.raw && candidate.iso === current.iso)) {
+        if (dateSelectionMode === 'auto' && nextCandidates.length > 1) {
+          setDateSelectionMode(null)
+          return null
+        }
+
+        return current
+      }
+
+      if (nextCandidates.length === 1) {
+        setDateSelectionMode('auto')
+        return nextCandidates[0]
+      }
+
+      setDateSelectionMode(null)
+      return null
+    })
+  }, [dateSelectionMode, dismissedDateRaws, editorPlainText])
+
+  const handleChange = useCallback((doc: TipTapDocument, plainText: string) => {
     setEditorDocument(doc)
+    setEditorPlainText(plainText)
+    setIsDirty(true)
+  }, [])
+
+  const handleClearDetectedDate = useCallback(() => {
+    if (!detectedDate) {
+      return
+    }
+
+    setDismissedDateRaws((previous) => (
+      previous.includes(detectedDate.raw) ? previous : [...previous, detectedDate.raw]
+    ))
+    setDetectedDate(null)
+    setDateSelectionMode(null)
+    setIsDirty(true)
+  }, [detectedDate])
+
+  const handleChooseDetectedDate = useCallback((candidate: DetectedDate) => {
+    setDetectedDate((current) => {
+      if (current?.raw === candidate.raw && current?.iso === candidate.iso) {
+        return current
+      }
+
+      return candidate
+    })
+    setDateSelectionMode('manual')
+    setDismissedDateRaws((previous) => previous.filter((entry) => entry !== candidate.raw))
+    setEditorKey((value) => value + 1)
     setIsDirty(true)
   }, [])
 
@@ -136,8 +219,13 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
 
     try {
       const markdownBody = tipTapDocumentToMarkdown(editorDocument)
+      const nextFrontmatter = updateDateFrontmatter(frontmatter, {
+        dueDate: detectedDate?.iso ?? null,
+        dueDateRaw: detectedDate?.raw ?? null,
+        dismissedDueDateRaws: dismissedDateRaws,
+      })
       const rawContent = mergeRawVaultDocument({
-        frontmatter,
+        frontmatter: nextFrontmatter,
         body: markdownBody,
       })
       const savedDocument = await saveDocument(summary.path, rawContent)
@@ -156,6 +244,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
           }
         } else {
           setDocumentTitle(savedDocument.title)
+          setFrontmatter(nextFrontmatter)
           setIsDirty(false)
           clearDraft(summary.path)
         }
@@ -165,7 +254,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
     } finally {
       setIsSaving(false)
     }
-  }, [editorDocument, frontmatter, moveDocument, onClose, pendingFolderId, saveDocument, summary.parentPath, summary.path])
+  }, [detectedDate, dismissedDateRaws, editorDocument, frontmatter, moveDocument, onClose, pendingFolderId, pendingFileName, saveDocument, summary.name, summary.parentPath, summary.path])
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true)
@@ -249,6 +338,8 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
         }}
         placeholder="Write your note..."
         autofocus={summary.excerpt.length === 0}
+        preferredDateRaw={detectedDate?.raw}
+        dismissedDateRaws={dismissedDateRaws}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 mt-2 border-t border-stone-100">
@@ -260,6 +351,35 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
             {documentTitle}
           </span>
           <span className="text-xs text-stone-400">{formatDate(updatedAt)}</span>
+          {detectedDate && (
+            <button
+              type="button"
+              onClick={handleClearDetectedDate}
+              className="group/date inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 transition-colors hover:bg-amber-100"
+            >
+              <span>Due {detectedDate.raw} → {formatDetectedDate(detectedDate.iso)}</span>
+              <span className="hidden text-[11px] font-medium text-amber-600 group-hover/date:inline">
+                Remove
+              </span>
+            </button>
+          )}
+          {!detectedDate && dateCandidates.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-stone-400">Reminder:</span>
+              {dateCandidates.map((candidate) => {
+                return (
+                  <button
+                    key={`${candidate.raw}-${candidate.iso}`}
+                    type="button"
+                    onClick={() => handleChooseDetectedDate(candidate)}
+                    className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-stone-200 hover:text-stone-800"
+                  >
+                    {candidate.raw}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           {isDirty && (pendingFolderId !== summary.parentPath || pendingFileName !== stripMarkdownExtension(summary.name)) && (
             <span className="text-xs text-amber-600">Path change will apply on save</span>
           )}
@@ -356,6 +476,22 @@ function normalizeTimestamp(timestamp: string | null) {
   }
 
   return new Date(numericTimestamp * 1000).toISOString()
+}
+
+function formatDetectedDate(iso: string) {
+  const parsed = new Date(iso)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return iso
+  }
+
+  return parsed.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function stripMarkdownExtension(name: string) {

@@ -13,6 +13,8 @@ export interface DateDetectionOptions {
   onDateDetected?: (date: DetectedDate | null) => void
   /** When provided, only this date is highlighted on load (the raw text saved by the API). */
   preferredRaw?: string
+  /** When provided, these raw matches are ignored on load and while typing. */
+  dismissedRaws?: string[]
   /** Lingua per il parsing delle date (es. "it", "en", "fr"). Fallback: navigator.language */
   lang?: string | null
 }
@@ -132,7 +134,7 @@ function buildDecorations(
   // Inline decoration — pill cliccabile, nessun widget separato
   decorations.push(
     Decoration.inline(pos.from, pos.to, {
-      class: 'inline-block bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-[1px] text-[0.8rem] font-medium cursor-pointer transition-colors duration-150 hover:bg-amber-200 hover:border-amber-300 hover:line-through hover:decoration-amber-700 date-detected-badge',
+      class: 'inline-block rounded-full border border-amber-200 bg-amber-100 px-2 py-[1px] text-[0.8rem] font-medium text-amber-800 transition-colors duration-150 hover:border-amber-300 hover:bg-amber-200',
       'data-raw': match.text,
     }),
   )
@@ -159,7 +161,7 @@ export const DateDetectionExtension = Extension.create<DateDetectionOptions>({
   },
 
   addProseMirrorPlugins() {
-    const { onDateDetected, preferredRaw, lang } = this.options
+    const { onDateDetected, preferredRaw, dismissedRaws = [], lang } = this.options
 
     return [
       new Plugin<PluginState>({
@@ -174,9 +176,12 @@ export const DateDetectionExtension = Extension.create<DateDetectionOptions>({
               lang,
             )
             const initialDismissed = new Set<string>(
-              preferredRaw
-                ? allResults.filter((r) => r.text !== preferredRaw).map((r) => r.text)
-                : [],
+              [
+                ...(preferredRaw
+                  ? allResults.filter((r) => r.text !== preferredRaw).map((r) => r.text)
+                  : []),
+                ...dismissedRaws,
+              ],
             )
             const result = buildDecorations(doc, initialDismissed, onDateDetected, preferredRaw, lang)
             return {
@@ -216,20 +221,6 @@ export const DateDetectionExtension = Extension.create<DateDetectionOptions>({
         props: {
           decorations(state) {
             return dateDetectionKey.getState(state)?.decorations ?? DecorationSet.empty
-          },
-          handleDOMEvents: {
-            mousedown(view, event) {
-              const target = event.target as HTMLElement
-              const badge = target.closest('.date-detected-badge') as HTMLElement | null
-              if (!badge) return false
-              const raw = badge.getAttribute('data-raw')
-              if (!raw) return false
-              event.preventDefault()
-              event.stopPropagation()
-              const tr = view.state.tr.setMeta(dateDetectionKey, { type: 'dismiss', raw })
-              view.dispatch(tr)
-              return true
-            },
           },
         },
       }),

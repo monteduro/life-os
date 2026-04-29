@@ -16,6 +16,12 @@ interface RawVaultDocumentParts {
   body: string
 }
 
+interface FrontmatterFieldUpdates {
+  dueDate?: string | null
+  dueDateRaw?: string | null
+  dismissedDueDateRaws?: string[]
+}
+
 const EMPTY_DOCUMENT: TipTapDocument = {
   type: 'doc',
   content: [{ type: 'paragraph' }],
@@ -54,6 +60,46 @@ export function mergeRawVaultDocument(parts: RawVaultDocumentParts) {
   }
 
   return `${parts.frontmatter}\n\n${normalizedBody}\n`
+}
+
+export function readDateFrontmatter(frontmatter: string | null) {
+  const dismissedDueDateRawsValue = readFrontmatterValue(frontmatter, 'dismissed_due_date_raws')
+
+  return {
+    dueDate: readFrontmatterValue(frontmatter, 'due_date'),
+    dueDateRaw: readFrontmatterValue(frontmatter, 'due_date_raw'),
+    dismissedDueDateRaws: parseStringArrayFrontmatterValue(dismissedDueDateRawsValue),
+  }
+}
+
+export function updateDateFrontmatter(frontmatter: string | null, updates: FrontmatterFieldUpdates) {
+  const nextEntries = new Map<string, string>()
+
+  for (const [key, value] of parseFrontmatterEntries(frontmatter)) {
+    if (key !== 'due_date' && key !== 'due_date_raw' && key !== 'dismissed_due_date_raws') {
+      nextEntries.set(key, value)
+    }
+  }
+
+  if (updates.dueDate) {
+    nextEntries.set('due_date', updates.dueDate)
+  }
+
+  if (updates.dueDateRaw) {
+    nextEntries.set('due_date_raw', updates.dueDateRaw)
+  }
+
+  if (updates.dismissedDueDateRaws && updates.dismissedDueDateRaws.length > 0) {
+    nextEntries.set('dismissed_due_date_raws', JSON.stringify(updates.dismissedDueDateRaws))
+  }
+
+  if (nextEntries.size === 0) {
+    return null
+  }
+
+  return `---\n${Array.from(nextEntries.entries())
+    .map(([key, value]) => `${key}: ${serializeYamlScalar(value)}`)
+    .join('\n')}\n---`
 }
 
 export function markdownToTipTapDocument(markdown: string): TipTapDocument {
@@ -99,6 +145,83 @@ export function rewriteFolderMentionTargets(rawContent: string, oldTargetPath: s
 
     return `[[${rewrittenTarget}${labelPart}]]`
   })
+}
+
+function readFrontmatterValue(frontmatter: string | null, key: string) {
+  const entries = parseFrontmatterEntries(frontmatter)
+  return entries.get(key) ?? null
+}
+
+function parseFrontmatterEntries(frontmatter: string | null) {
+  const entries = new Map<string, string>()
+
+  if (!frontmatter) {
+    return entries
+  }
+
+  const lines = frontmatter.split('\n')
+  const contentLines = lines.filter((line, index) => {
+    if (index === 0 || index === lines.length - 1) {
+      return line.trim() !== '---'
+    }
+
+    return true
+  })
+
+  for (const line of contentLines) {
+    const match = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/)
+    if (!match) {
+      continue
+    }
+
+    entries.set(match[1], parseYamlScalar(match[2].trim()))
+  }
+
+  return entries
+}
+
+function parseYamlScalar(value: string) {
+  if (!value) {
+    return ''
+  }
+
+  if (
+    (value.startsWith('"') && value.endsWith('"'))
+    || (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    try {
+      if (value.startsWith('"')) {
+        return JSON.parse(value)
+      }
+
+      return value.slice(1, -1).replace(/\\'/g, "'")
+    } catch {
+      return value.slice(1, -1)
+    }
+  }
+
+  return value
+}
+
+function serializeYamlScalar(value: string) {
+  return JSON.stringify(value)
+}
+
+function parseStringArrayFrontmatterValue(value: string | null) {
+  if (!value) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === 'string')) {
+      return parsed
+    }
+  } catch {
+    // Ignore malformed values and fall back to an empty list.
+  }
+
+  return []
 }
 
 function parseBlockTokens(tokens: MarkdownToken[], start: number, end: number): TipTapNode[] {
