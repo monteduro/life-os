@@ -45,9 +45,6 @@ function NotePreviewCard({
         className="w-full text-left flex flex-col gap-3 cursor-pointer"
       >
         <div className="flex items-center gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">
-          Markdown
-        </span>
         <span className="ml-auto text-xs text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity">
           open →
         </span>
