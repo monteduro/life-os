@@ -7,7 +7,7 @@
 > This project started only a few days ago.
 > The direction is real, but the product is still very early, unstable, and changing fast.
 
-lifeOS is a local-first knowledge and personal operating system evolving toward a desktop-first notes and tracking app.
+lifeOS is a local-first desktop app for notes, knowledge organization, and personal tracking built on top of plain Markdown files.
 
 ## Product Direction
 
@@ -32,9 +32,7 @@ Right now I am evaluating tradeoffs between:
 - DB-first plus cloud sync later
 - hybrid approaches between those models
 
-If you have strong opinions or relevant experience, feedback is very welcome in this thread:
-
-https://www.reddit.com/r/selfhosted/comments/1sxjt19/im_building_the_best_lifeos_app_based_but_im/
+If you have strong opinions or relevant experience, use GitHub Discussions to talk through the architecture choices and tradeoffs.
 
 The current direction is:
 
@@ -52,7 +50,7 @@ This is no longer a plain Vite starter and no longer a backend-first notes clien
 
 ## Current Status
 
-Implemented today:
+Implemented:
 
 - Tauri desktop shell
 - open local folder as vault
@@ -152,11 +150,23 @@ On macOS with `zsh`, this is usually enough.
 npm install
 ```
 
-### Run the web app only
+### Frontend-only preview
 
 ```bash
 npm run dev
 ```
+
+This starts a plain Vite browser preview for frontend iteration only.
+
+It does **not** expose the real desktop runtime:
+
+- no native folder picker
+- no local vault access
+- no SQLite index
+- no file watcher
+- no Tauri window chrome behavior
+
+If you want to test the actual product flow, use `npm run tauri:dev`.
 
 ### Run the desktop app
 
