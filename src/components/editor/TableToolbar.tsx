@@ -15,7 +15,7 @@ function MatIcon({ svg }: { svg: string }) {
     <span
       className="tiptap-button-icon"
       style={{ width: 18, height: 18, display: "flex", alignItems: "center" }}
-      // Il fill è controllato tramite currentColor — gli SVG di Material Symbols usano già fill="currentColor" implicitamente
+      // Fill is controlled through currentColor — Material Symbols SVGs already use fill="currentColor" implicitly.
       dangerouslySetInnerHTML={{
         __html: svg.replace(/<svg /, '<svg fill="currentColor" width="18" height="18" '),
       }}
@@ -72,49 +72,49 @@ export function TableToolbar() {
       <ToolbarSeparator />
 
       <TableActionButton
-        label="Aggiungi colonna a sinistra"
+        label="Add column to the left"
         svg={addColumnLeftSvg}
         disabled={!can.addColumnBefore()}
         onClick={() => editor.chain().focus().addColumnBefore().run()}
       />
 
       <TableActionButton
-        label="Aggiungi colonna a destra"
+        label="Add column to the right"
         svg={addColumnRightSvg}
         disabled={!can.addColumnAfter()}
         onClick={() => editor.chain().focus().addColumnAfter().run()}
       />
 
       <TableActionButton
-        label="Aggiungi riga sopra"
+        label="Add row above"
         svg={addRowAboveSvg}
         disabled={!can.addRowBefore()}
         onClick={() => editor.chain().focus().addRowBefore().run()}
       />
 
       <TableActionButton
-        label="Aggiungi riga sotto"
+        label="Add row below"
         svg={addRowBelowSvg}
         disabled={!can.addRowAfter()}
         onClick={() => editor.chain().focus().addRowAfter().run()}
       />
 
       <TableActionButton
-        label="Elimina colonna"
+        label="Delete column"
         svg={viewColumnSvg}
         disabled={!can.deleteColumn()}
         onClick={() => editor.chain().focus().deleteColumn().run()}
       />
 
       <TableActionButton
-        label="Elimina riga"
+        label="Delete row"
         svg={tableRowsSvg}
         disabled={!can.deleteRow()}
         onClick={() => editor.chain().focus().deleteRow().run()}
       />
 
       <TableActionButton
-        label="Elimina tabella"
+        label="Delete table"
         svg={deleteForeverSvg}
         disabled={!can.deleteTable()}
         onClick={() => editor.chain().focus().deleteTable().run()}

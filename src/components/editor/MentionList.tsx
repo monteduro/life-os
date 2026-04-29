@@ -22,7 +22,7 @@ export interface MentionListHandle {
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
 const typeLabel: Record<MentionItem['type'], string> = {
-  folder: 'Cartella',
+  folder: 'Folder',
 }
 
 const typeBadgeClass: Record<MentionItem['type'], string> = {
@@ -65,7 +65,7 @@ const MentionList = forwardRef<MentionListHandle, MentionListProps>(
     if (!items.length) {
       return (
         <div className="bg-white border border-gray-200 rounded-xl shadow-lg py-3 px-4 min-w-[200px]">
-          <p className="text-sm text-gray-400 text-center">Nessun risultato</p>
+          <p className="text-sm text-gray-400 text-center">No results</p>
         </div>
       )
     }

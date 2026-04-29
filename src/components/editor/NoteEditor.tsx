@@ -63,7 +63,7 @@ export default function NoteEditor({
   onDateDetected,
   onSave,
   onBeforeNavigate,
-  placeholder = "Scrivi una nota... (supporta sintassi Markdown)",
+  placeholder = "Write a note... (Markdown supported)",
   editorKey,
   autofocus = false,
   preferredDateRaw,

@@ -20,7 +20,7 @@ declare global {
 
 function ensureDesktopShell() {
   if (!window.__TAURI_INTERNALS__) {
-    throw new Error('Desktop shell non disponibile. Avvia l’app con `npm run tauri:dev`.')
+    throw new Error('Desktop shell unavailable. Start the app with `npm run tauri:dev`.')
   }
 }
 
@@ -30,7 +30,7 @@ export async function pickVaultDirectory() {
   const selected = await open({
     directory: true,
     multiple: false,
-    title: 'Apri una cartella Markdown',
+    title: 'Open a Markdown folder',
   })
 
   return typeof selected === 'string' ? selected : null

@@ -49,7 +49,7 @@ function NotePreviewCard({
           Markdown
         </span>
         <span className="ml-auto text-xs text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity">
-          apri →
+          open →
         </span>
         </div>
 
@@ -58,7 +58,7 @@ function NotePreviewCard({
         </h3>
 
         <p className="text-sm text-stone-500 leading-relaxed line-clamp-4">
-          {excerpt || <span className="italic text-stone-300">Nota vuota</span>}
+          {excerpt || <span className="italic text-stone-300">Empty note</span>}
         </p>
       </button>
 
@@ -84,7 +84,6 @@ export default function NoteList({ folderId = null }: NoteListProps) {
     searchError,
   } = useVaultStore()
 
-  // Quale nota dell'archivio è attualmente espansa (accordion: max 1 alla volta)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (!currentVault) {
@@ -156,7 +155,7 @@ export default function NoteList({ folderId = null }: NoteListProps) {
         </div>
       </div>
 
-      {/* ── 2. Ultime 2 note ── */}
+      {/* ── 2. Latest notes ── */}
       {inlineNotes.length > 0 && (
         <div className="mb-10 flex flex-col gap-5">
           <div className="flex items-center gap-3">
@@ -171,25 +170,25 @@ export default function NoteList({ folderId = null }: NoteListProps) {
         </div>
       )}
 
-      {/* ── 3. Archivio ── */}
+      {/* ── 3. Archive ── */}
       {archiveNotes.length > 0 && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-stone-400 uppercase tracking-widest">
-              Archivio
+              Archive
             </span>
             <div className="flex-1 border-t border-stone-200" />
-            <span className="text-xs font-medium text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">{archiveNotes.length} note</span>
+            <span className="text-xs font-medium text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">{archiveNotes.length} notes</span>
           </div>
 
-          {/* Nota espansa (accordion) — sopra la grid */}
+          {/* Expanded note (accordion) — above the grid */}
           {expandedNote && (
             <div className="flex flex-col gap-4 animate-note-expand mb-2">
               <LocalNoteInline summary={expandedNote} onClose={() => setExpandedId(null)} />
             </div>
           )}
 
-          {/* Grid delle card (esclusa quella espansa) */}
+          {/* Card grid (excluding the expanded one) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {archiveNotes
               .filter((n) => n.path !== expandedId)
@@ -216,7 +215,7 @@ export default function NoteList({ folderId = null }: NoteListProps) {
       {/* ── Empty state ── */}
       {allNotes.length === 0 && (
         <p className="text-sm text-stone-400 italic py-4">
-          {isSearchActive ? 'Nessun risultato per questa ricerca.' : 'Nessuna nota Markdown in questa cartella.'}
+          {isSearchActive ? 'No results for this search.' : 'No Markdown notes in this folder.'}
         </p>
       )}
     </div>

@@ -101,10 +101,10 @@ struct FolderAccumulator {
 #[tauri::command]
 fn scan_vault(root_path: String) -> Result<VaultSnapshot, String> {
   let root = fs::canonicalize(&root_path)
-    .map_err(|error| format!("Impossibile accedere al vault `{root_path}`: {error}"))?;
+    .map_err(|error| format!("Unable to access vault `{root_path}`: {error}"))?;
 
   if !root.is_dir() {
-    return Err("Il path selezionato non e` una cartella.".to_string());
+    return Err("The selected path is not a folder.".to_string());
   }
 
   let root_path_string = path_to_string(&root);
@@ -202,36 +202,36 @@ fn scan_vault(root_path: String) -> Result<VaultSnapshot, String> {
 fn create_folder(root_path: String, parent_path: Option<String>, name: String) -> Result<String, String> {
   let root = resolve_existing_dir(&root_path, "vault")?;
   let target_parent = match parent_path.as_deref() {
-    Some(path) => resolve_existing_dir(path, "cartella destinazione")?,
+    Some(path) => resolve_existing_dir(path, "destination folder")?,
     None => root.clone(),
   };
 
   if !target_parent.starts_with(&root) {
-    return Err("La cartella di destinazione non appartiene al vault corrente.".to_string());
+    return Err("The destination folder does not belong to the current vault.".to_string());
   }
 
   let safe_name = sanitize_folder_name(&name);
   let folder_path = build_unique_folder_path(&target_parent, &safe_name);
 
   fs::create_dir_all(&folder_path)
-    .map_err(|error| format!("Impossibile creare la cartella `{}`: {error}", folder_path.display()))?;
+    .map_err(|error| format!("Unable to create folder `{}`: {error}", folder_path.display()))?;
 
   Ok(path_to_string(&folder_path))
 }
 
 #[tauri::command]
 fn rename_folder(path: String, name: String) -> Result<String, String> {
-  let source_path = resolve_existing_dir(&path, "cartella da rinominare")?;
+  let source_path = resolve_existing_dir(&path, "folder to rename")?;
   let parent_dir = source_path
     .parent()
-    .ok_or_else(|| "Impossibile determinare la cartella padre.".to_string())?;
+    .ok_or_else(|| "Unable to resolve the parent folder.".to_string())?;
 
   let safe_name = sanitize_folder_name(&name);
   let destination_path = build_unique_folder_path(parent_dir, &safe_name);
 
   fs::rename(&source_path, &destination_path).map_err(|error| {
     format!(
-      "Impossibile rinominare `{}` in `{}`: {error}",
+      "Unable to rename `{}` to `{}`: {error}",
       source_path.display(),
       destination_path.display()
     )
@@ -243,27 +243,27 @@ fn rename_folder(path: String, name: String) -> Result<String, String> {
 #[tauri::command]
 fn move_folder(root_path: String, path: String, target_parent_path: Option<String>) -> Result<String, String> {
   let root = resolve_existing_dir(&root_path, "vault")?;
-  let source_path = resolve_existing_dir(&path, "cartella da spostare")?;
+  let source_path = resolve_existing_dir(&path, "folder to move")?;
   let target_parent = match target_parent_path.as_deref() {
-    Some(path) => resolve_existing_dir(path, "cartella destinazione")?,
+    Some(path) => resolve_existing_dir(path, "destination folder")?,
     None => root.clone(),
   };
 
   if !source_path.starts_with(&root) || !target_parent.starts_with(&root) {
-    return Err("La cartella non appartiene al vault corrente.".to_string());
+    return Err("The folder does not belong to the current vault.".to_string());
   }
 
   if target_parent == source_path {
-    return Err("Una cartella non puo` essere spostata dentro se stessa.".to_string());
+    return Err("A folder cannot be moved inside itself.".to_string());
   }
 
   if target_parent.starts_with(&source_path) {
-    return Err("Una cartella non puo` essere spostata dentro una sua sottocartella.".to_string());
+    return Err("A folder cannot be moved inside one of its subfolders.".to_string());
   }
 
   let current_parent = source_path
     .parent()
-    .ok_or_else(|| "Impossibile determinare la cartella padre corrente.".to_string())?;
+    .ok_or_else(|| "Unable to resolve the current parent folder.".to_string())?;
 
   if current_parent == target_parent {
     return Ok(path_to_string(&source_path));
@@ -272,12 +272,12 @@ fn move_folder(root_path: String, path: String, target_parent_path: Option<Strin
   let folder_name = source_path
     .file_name()
     .and_then(|name| name.to_str())
-    .ok_or_else(|| "Impossibile determinare il nome della cartella.".to_string())?;
+    .ok_or_else(|| "Unable to resolve the folder name.".to_string())?;
   let destination_path = build_unique_folder_path(&target_parent, folder_name);
 
   fs::rename(&source_path, &destination_path).map_err(|error| {
     format!(
-      "Impossibile spostare `{}` in `{}`: {error}",
+      "Unable to move `{}` to `{}`: {error}",
       source_path.display(),
       destination_path.display()
     )
@@ -290,7 +290,7 @@ fn move_folder(root_path: String, path: String, target_parent_path: Option<Strin
 fn read_document(path: String) -> Result<VaultDocument, String> {
   let document_path = PathBuf::from(&path);
   let raw_content = fs::read_to_string(&document_path)
-    .map_err(|error| format!("Impossibile leggere `{path}`: {error}"))?;
+    .map_err(|error| format!("Unable to read `{path}`: {error}"))?;
 
   let body = strip_frontmatter(&raw_content);
 
@@ -317,12 +317,12 @@ fn create_document(
   let creating_in_root = parent_path.is_none();
 
   let target_dir = match parent_path.as_deref() {
-    Some(path) => resolve_existing_dir(path, "cartella destinazione")?,
+    Some(path) => resolve_existing_dir(path, "destination folder")?,
     None => root.clone(),
   };
 
   if !target_dir.starts_with(&root) {
-    return Err("La cartella di destinazione non appartiene al vault corrente.".to_string());
+    return Err("The destination folder does not belong to the current vault.".to_string());
   }
 
   let requested_title = title.unwrap_or_else(|| "Untitled".to_string());
@@ -331,13 +331,13 @@ fn create_document(
   let initial_content = content.unwrap_or_default();
 
   fs::write(&document_path, initial_content)
-    .map_err(|error| format!("Impossibile creare `{}`: {error}", document_path.display()))?;
+    .map_err(|error| format!("Unable to create `{}`: {error}", document_path.display()))?;
 
   let created_document = read_document(path_to_string(&document_path))?;
   let parent = document_path.parent().map(path_to_string).filter(|value| value != &root_string);
 
   if creating_in_root && parent.is_some() {
-    return Err("La nota creata in root ha un parent non previsto.".to_string());
+    return Err("The note created in root has an unexpected parent.".to_string());
   }
 
   Ok(created_document)
@@ -349,7 +349,7 @@ fn save_document(path: String, content: String) -> Result<VaultDocument, String>
   ensure_markdown_path(&document_path)?;
 
   fs::write(&document_path, content)
-    .map_err(|error| format!("Impossibile salvare `{path}`: {error}"))?;
+    .map_err(|error| format!("Unable to save `{path}`: {error}"))?;
 
   read_document(path)
 }
@@ -360,7 +360,7 @@ fn delete_document(path: String) -> Result<(), String> {
   ensure_markdown_path(&document_path)?;
 
   fs::remove_file(&document_path)
-    .map_err(|error| format!("Impossibile eliminare `{path}`: {error}"))?;
+    .map_err(|error| format!("Unable to delete `{path}`: {error}"))?;
 
   Ok(())
 }
@@ -374,7 +374,7 @@ fn move_document(
   let source_path = PathBuf::from(&path);
   ensure_markdown_path(&source_path)?;
 
-  let target_dir = resolve_existing_dir(&target_folder_path, "cartella destinazione")?;
+  let target_dir = resolve_existing_dir(&target_folder_path, "destination folder")?;
   let current_stem = source_path
     .file_stem()
     .and_then(|stem| stem.to_str())
@@ -385,7 +385,7 @@ fn move_document(
 
   fs::rename(&source_path, &destination_path).map_err(|error| {
     format!(
-      "Impossibile spostare `{}` in `{}`: {error}",
+      "Unable to move `{}` to `{}`: {error}",
       source_path.display(),
       destination_path.display()
     )
@@ -417,7 +417,7 @@ fn inspect_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexSt
 
   let connection = Connection::open(&database_path).map_err(|error| {
     format!(
-      "Impossibile aprire il database indice `{}`: {error}",
+      "Unable to open index database `{}`: {error}",
       database_path.display()
     )
   })?;
@@ -430,7 +430,7 @@ fn inspect_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexSt
       params![root_path.as_str()],
       |row| row.get::<_, i64>(0),
     )
-    .map_err(|error| format!("Impossibile contare i documenti indicizzati: {error}"))? as usize;
+    .map_err(|error| format!("Unable to count indexed documents: {error}"))? as usize;
 
   let indexed_folders = connection
     .query_row(
@@ -438,7 +438,7 @@ fn inspect_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexSt
       params![root_path.as_str()],
       |row| row.get::<_, i64>(0),
     )
-    .map_err(|error| format!("Impossibile contare le cartelle indicizzate: {error}"))? as usize;
+    .map_err(|error| format!("Unable to count indexed folders: {error}"))? as usize;
 
   let indexed_at = connection
     .query_row(
@@ -446,7 +446,7 @@ fn inspect_local_index(app: AppHandle, root_path: String) -> Result<LocalIndexSt
       params![root_path.as_str()],
       |row| row.get::<_, Option<String>>(0),
     )
-    .map_err(|error| format!("Impossibile leggere l'ultimo rebuild dell'indice: {error}"))?
+    .map_err(|error| format!("Unable to read the latest index rebuild timestamp: {error}"))?
     .unwrap_or_default();
 
   Ok(LocalIndexStats {
@@ -473,7 +473,7 @@ fn search_local_index(
   let database_path = local_index_database_path(&app, &root_path)?;
   let connection = Connection::open(&database_path).map_err(|error| {
     format!(
-      "Impossibile aprire il database indice `{}`: {error}",
+      "Unable to open index database `{}`: {error}",
       database_path.display()
     )
   })?;
@@ -500,7 +500,7 @@ fn search_local_index(
         LIMIT 100
       ",
     )
-    .map_err(|error| format!("Impossibile preparare la query di ricerca: {error}"))?;
+    .map_err(|error| format!("Unable to prepare the search query: {error}"))?;
 
   let rows = statement
     .query_map(params![root_path.as_str(), normalized_query.as_str()], |row| {
@@ -514,11 +514,11 @@ fn search_local_index(
         updated_at: row.get(5)?,
       })
     })
-    .map_err(|error| format!("Impossibile eseguire la ricerca sull'indice locale: {error}"))?;
+    .map_err(|error| format!("Unable to run search on the local index: {error}"))?;
 
   let mut results = Vec::new();
   for row in rows {
-    results.push(row.map_err(|error| format!("Impossibile leggere un risultato di ricerca: {error}"))?);
+    results.push(row.map_err(|error| format!("Unable to read a search result: {error}"))?);
   }
 
   Ok(results)
@@ -531,7 +531,7 @@ fn start_vault_watcher(
   root_path: String,
 ) -> Result<(), String> {
   let root = fs::canonicalize(&root_path)
-    .map_err(|error| format!("Impossibile avviare il watcher per `{root_path}`: {error}"))?;
+    .map_err(|error| format!("Unable to start the watcher for `{root_path}`: {error}"))?;
   let canonical_root_path = path_to_string(&root);
   let database_path = local_index_database_path(&app, &canonical_root_path)?;
   let app_handle = app.clone();
@@ -541,16 +541,16 @@ fn start_vault_watcher(
       let _ = handle_vault_watch_event(&app_handle, &canonical_root_path, &database_path, event);
     }
   })
-  .map_err(|error| format!("Impossibile creare il watcher filesystem: {error}"))?;
+  .map_err(|error| format!("Unable to create the filesystem watcher: {error}"))?;
 
   watcher
     .watch(&root, RecursiveMode::Recursive)
-    .map_err(|error| format!("Impossibile osservare il vault `{}`: {error}", root.display()))?;
+    .map_err(|error| format!("Unable to watch vault `{}`: {error}", root.display()))?;
 
   let mut active_watcher = state
     .watcher
     .lock()
-    .map_err(|_| "Impossibile acquisire il lock del watcher.".to_string())?;
+    .map_err(|_| "Unable to acquire the watcher lock.".to_string())?;
   *active_watcher = Some(watcher);
 
   Ok(())
@@ -561,7 +561,7 @@ fn build_document_summary(
   root_path: &str,
 ) -> Result<VaultDocumentSummary, String> {
   let raw_content = fs::read_to_string(path)
-    .map_err(|error| format!("Impossibile leggere `{}`: {error}", path.display()))?;
+    .map_err(|error| format!("Unable to read `{}`: {error}", path.display()))?;
   let body = strip_frontmatter(&raw_content);
   let parent_path = path.parent().map(path_to_string).filter(|value| value != root_path);
 
@@ -578,7 +578,7 @@ fn build_document_summary(
 
 fn read_indexed_document_content(path: &Path) -> Result<IndexedDocumentContent, String> {
   let raw_content = fs::read_to_string(path)
-    .map_err(|error| format!("Impossibile leggere `{}` per l'indice: {error}", path.display()))?;
+    .map_err(|error| format!("Unable to read `{}` for indexing: {error}", path.display()))?;
   let body = strip_frontmatter(&raw_content);
 
   Ok(IndexedDocumentContent {
@@ -595,7 +595,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
   if let Some(parent) = database_path.parent() {
     fs::create_dir_all(parent).map_err(|error| {
       format!(
-        "Impossibile creare la cartella del database indice `{}`: {error}",
+        "Unable to create the index database folder `{}`: {error}",
         parent.display()
       )
     })?;
@@ -603,7 +603,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
 
   let connection = Connection::open(database_path).map_err(|error| {
     format!(
-      "Impossibile aprire il database indice `{}`: {error}",
+      "Unable to open index database `{}`: {error}",
       database_path.display()
     )
   })?;
@@ -612,23 +612,23 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
 
   connection
     .execute("DELETE FROM documents WHERE root_path = ?1", params![snapshot.root_path.as_str()])
-    .map_err(|error| format!("Impossibile svuotare i documenti indicizzati: {error}"))?;
+    .map_err(|error| format!("Unable to clear indexed documents: {error}"))?;
   connection
     .execute("DELETE FROM folders WHERE root_path = ?1", params![snapshot.root_path.as_str()])
-    .map_err(|error| format!("Impossibile svuotare le cartelle indicizzate: {error}"))?;
+    .map_err(|error| format!("Unable to clear indexed folders: {error}"))?;
   connection
     .execute("DELETE FROM document_links WHERE root_path = ?1", params![snapshot.root_path.as_str()])
-    .map_err(|error| format!("Impossibile svuotare i link indicizzati: {error}"))?;
+    .map_err(|error| format!("Unable to clear indexed links: {error}"))?;
   connection
     .execute("DELETE FROM document_tags WHERE root_path = ?1", params![snapshot.root_path.as_str()])
-    .map_err(|error| format!("Impossibile svuotare i tag indicizzati: {error}"))?;
+    .map_err(|error| format!("Unable to clear indexed tags: {error}"))?;
   connection
     .execute("DELETE FROM search_fts WHERE root_path = ?1", params![snapshot.root_path.as_str()])
-    .map_err(|error| format!("Impossibile svuotare il full-text index: {error}"))?;
+    .map_err(|error| format!("Unable to clear the full-text index: {error}"))?;
 
   let transaction = connection
     .unchecked_transaction()
-    .map_err(|error| format!("Impossibile iniziare la transazione indice: {error}"))?;
+    .map_err(|error| format!("Unable to start the index transaction: {error}"))?;
 
   {
     let mut folder_statement = transaction
@@ -636,7 +636,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
         "INSERT INTO folders (path, root_path, name, parent_path, document_count, indexed_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
       )
-      .map_err(|error| format!("Impossibile preparare l'inserimento cartelle: {error}"))?;
+      .map_err(|error| format!("Unable to prepare folder insert: {error}"))?;
 
     for folder in flatten_folder_nodes(&snapshot.folders) {
       folder_statement
@@ -648,7 +648,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
           folder.document_count as i64,
           indexed_at.as_str(),
         ])
-        .map_err(|error| format!("Impossibile indicizzare la cartella `{}`: {error}", folder.path))?;
+        .map_err(|error| format!("Unable to index folder `{}`: {error}", folder.path))?;
     }
   }
 
@@ -659,7 +659,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
           path, root_path, name, title, parent_path, excerpt, updated_at, indexed_at, content_hash
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
       )
-      .map_err(|error| format!("Impossibile preparare l'inserimento documenti: {error}"))?;
+      .map_err(|error| format!("Unable to prepare document insert: {error}"))?;
 
     for document in &snapshot.documents {
       let content_hash = build_document_index_hash(document);
@@ -675,7 +675,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
           indexed_at.as_str(),
           content_hash.as_str(),
         ])
-        .map_err(|error| format!("Impossibile indicizzare il documento `{}`: {error}", document.path))?;
+        .map_err(|error| format!("Unable to index document `{}`: {error}", document.path))?;
     }
   }
 
@@ -685,7 +685,7 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
         "INSERT INTO search_fts (path, title, excerpt, body, root_path)
          VALUES (?1, ?2, ?3, ?4, ?5)",
       )
-      .map_err(|error| format!("Impossibile preparare l'inserimento search_fts: {error}"))?;
+      .map_err(|error| format!("Unable to prepare search_fts insert: {error}"))?;
 
     for document in &snapshot.documents {
       let indexed_content = read_indexed_document_content(Path::new(&document.path))?;
@@ -697,13 +697,13 @@ fn rebuild_local_index_at_path(database_path: &Path, root_path: &str) -> Result<
           indexed_content.body.as_str(),
           snapshot.root_path.as_str(),
         ])
-        .map_err(|error| format!("Impossibile indicizzare il testo di `{}`: {error}", document.path))?;
+        .map_err(|error| format!("Unable to index text for `{}`: {error}", document.path))?;
     }
   }
 
   transaction
     .commit()
-    .map_err(|error| format!("Impossibile confermare l'indicizzazione: {error}"))?;
+    .map_err(|error| format!("Unable to commit indexing: {error}"))?;
 
   Ok(LocalIndexStats {
     database_path: path_to_string(database_path),
@@ -764,7 +764,7 @@ fn handle_vault_watch_event(
         paths: visible_paths,
       },
     )
-    .map_err(|error| format!("Impossibile emettere l'evento watcher: {error}"))?;
+    .map_err(|error| format!("Unable to emit the watcher event: {error}"))?;
 
   Ok(())
 }
@@ -778,7 +778,7 @@ fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) 
   if let Some(parent) = database_path.parent() {
     fs::create_dir_all(parent).map_err(|error| {
       format!(
-        "Impossibile creare la cartella del database indice `{}`: {error}",
+        "Unable to create the index database folder `{}`: {error}",
         parent.display()
       )
     })?;
@@ -786,7 +786,7 @@ fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) 
 
   let connection = Connection::open(database_path).map_err(|error| {
     format!(
-      "Impossibile aprire il database indice `{}`: {error}",
+      "Unable to open index database `{}`: {error}",
       database_path.display()
     )
   })?;
@@ -820,7 +820,7 @@ fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) 
         content_hash.as_str(),
       ],
     )
-    .map_err(|error| format!("Impossibile aggiornare il documento nell'indice: {error}"))?;
+    .map_err(|error| format!("Unable to update the indexed document: {error}"))?;
 
   connection
     .execute(
@@ -839,7 +839,7 @@ fn upsert_document_in_index(database_path: &Path, root_path: &str, path: &Path) 
         ],
       )
     })
-    .map_err(|error| format!("Impossibile aggiornare il full-text index del documento: {error}"))?;
+    .map_err(|error| format!("Unable to update the document full-text index: {error}"))?;
 
   Ok(())
 }
@@ -902,7 +902,7 @@ fn initialize_local_index_schema(connection: &Connection) -> Result<(), String> 
       );
     ",
   )
-  .map_err(|error| format!("Impossibile inizializzare lo schema SQLite: {error}"))?;
+  .map_err(|error| format!("Unable to initialize the SQLite schema: {error}"))?;
 
   ensure_search_fts_columns(connection)?;
 
@@ -912,13 +912,13 @@ fn initialize_local_index_schema(connection: &Connection) -> Result<(), String> 
 fn ensure_search_fts_columns(connection: &Connection) -> Result<(), String> {
   let mut statement = connection
     .prepare("PRAGMA table_info(search_fts)")
-    .map_err(|error| format!("Impossibile leggere lo schema di search_fts: {error}"))?;
+    .map_err(|error| format!("Unable to read the search_fts schema: {error}"))?;
 
   let columns = statement
     .query_map([], |row| row.get::<_, String>(1))
-    .map_err(|error| format!("Impossibile ispezionare le colonne di search_fts: {error}"))?
+    .map_err(|error| format!("Unable to inspect search_fts columns: {error}"))?
     .collect::<Result<Vec<_>, _>>()
-    .map_err(|error| format!("Impossibile leggere una colonna di search_fts: {error}"))?;
+    .map_err(|error| format!("Unable to read a search_fts column: {error}"))?;
 
   if columns.iter().any(|column| column == "body") {
     return Ok(());
@@ -937,7 +937,7 @@ fn ensure_search_fts_columns(connection: &Connection) -> Result<(), String> {
         );
       ",
     )
-    .map_err(|error| format!("Impossibile aggiornare lo schema di search_fts: {error}"))?;
+    .map_err(|error| format!("Unable to upgrade the search_fts schema: {error}"))?;
 
   Ok(())
 }
@@ -946,7 +946,7 @@ fn local_index_database_path(app: &AppHandle, root_path: &str) -> Result<PathBuf
   let app_data_dir = app
     .path()
     .app_local_data_dir()
-    .map_err(|error| format!("Impossibile risolvere la cartella dati dell'app: {error}"))?;
+    .map_err(|error| format!("Unable to resolve the app data directory: {error}"))?;
 
   let root_hash = hash_string(root_path);
   Ok(app_data_dir.join("index").join(format!("vault-{root_hash}.sqlite")))
@@ -1017,7 +1017,7 @@ fn current_timestamp_string() -> Result<String, String> {
   Ok(
     SystemTime::now()
       .duration_since(SystemTime::UNIX_EPOCH)
-      .map_err(|error| format!("Impossibile leggere l'orologio di sistema: {error}"))?
+      .map_err(|error| format!("Unable to read the system clock: {error}"))?
       .as_secs()
       .to_string(),
   )
@@ -1063,10 +1063,10 @@ fn should_skip_path(root: &Path, path: &Path) -> bool {
 
 fn resolve_existing_dir(path: &str, label: &str) -> Result<PathBuf, String> {
   let resolved = fs::canonicalize(path)
-    .map_err(|error| format!("Impossibile accedere a {label} `{path}`: {error}"))?;
+    .map_err(|error| format!("Unable to access {label} `{path}`: {error}"))?;
 
   if !resolved.is_dir() {
-    return Err(format!("Il path `{path}` non e` una cartella valida."));
+    return Err(format!("The path `{path}` is not a valid folder."));
   }
 
   Ok(resolved)
@@ -1083,7 +1083,7 @@ fn is_markdown_file(path: &Path) -> bool {
 fn ensure_markdown_path(path: &Path) -> Result<(), String> {
   if !is_markdown_file(path) {
     return Err(format!(
-      "Il file `{}` non e` un documento Markdown supportato.",
+      "The file `{}` is not a supported Markdown document.",
       path.display()
     ));
   }

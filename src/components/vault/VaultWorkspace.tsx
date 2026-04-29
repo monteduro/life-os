@@ -15,7 +15,7 @@ function getVisibleDocuments(
 
 function formatUpdatedAt(updatedAt: string | null) {
   if (!updatedAt) {
-    return 'Data non disponibile'
+    return 'Date unavailable'
   }
 
   const timestamp = Number(updatedAt)
@@ -23,7 +23,7 @@ function formatUpdatedAt(updatedAt: string | null) {
     return updatedAt
   }
 
-  return new Date(timestamp * 1000).toLocaleString('it-IT', {
+  return new Date(timestamp * 1000).toLocaleString('en-US', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -177,7 +177,7 @@ export default function VaultWorkspace() {
             </p>
             <h2 className="mt-2 text-lg font-semibold text-stone-900">{currentVault.rootName}</h2>
             <p className="mt-1 text-xs text-stone-500">
-              {currentVault.documentCount} documenti indicizzati
+              {currentVault.documentCount} indexed documents
             </p>
           </div>
 
@@ -192,7 +192,7 @@ export default function VaultWorkspace() {
               }`}
             >
               <FolderOpen className="h-4 w-4" />
-              <span className="flex-1">Root</span>
+              <span className="flex-1">Inbox</span>
               <span className="text-xs text-stone-400">
                 {currentVault.documents.filter((document) => document.parentPath === null).length}
               </span>
@@ -208,7 +208,7 @@ export default function VaultWorkspace() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-6 text-sm text-stone-500">
-                Nessuna sottocartella trovata in questo vault.
+                No subfolders found in this vault.
               </div>
             )}
           </div>
@@ -248,7 +248,7 @@ export default function VaultWorkspace() {
                 onClick={() => void openVault()}
                 className="rounded-xl bg-stone-900 px-3 py-2 text-sm font-medium text-stone-50 transition-colors hover:bg-stone-800"
               >
-                Apri altro vault
+                Open another vault
               </button>
             </div>
           </header>
@@ -260,14 +260,14 @@ export default function VaultWorkspace() {
                   Documents
                 </p>
                 <p className="mt-1 text-sm text-stone-500">
-                  {visibleDocuments.length} file in questa cartella
+                  {visibleDocuments.length} files in this folder
                 </p>
               </div>
 
               <div className="flex max-h-[calc(100vh-88px-74px)] flex-col overflow-y-auto">
                 {visibleDocuments.length === 0 ? (
                   <div className="px-5 py-10 text-sm text-stone-500">
-                    Nessun file Markdown direttamente in questa cartella.
+                    No Markdown files directly in this folder.
                   </div>
                 ) : (
                   visibleDocuments.map((document) => {
@@ -299,7 +299,7 @@ export default function VaultWorkspace() {
                               {document.name}
                             </p>
                             <p className="mt-2 line-clamp-3 text-sm leading-6 text-stone-600">
-                              {document.excerpt || 'Documento senza estratto disponibile.'}
+                              {document.excerpt || 'No excerpt available for this document.'}
                             </p>
                           </div>
                         </div>
@@ -312,7 +312,7 @@ export default function VaultWorkspace() {
 
             <section className="min-h-0 bg-[linear-gradient(180deg,_rgba(248,244,236,0.95)_0%,_rgba(255,255,255,1)_44%,_rgba(250,248,243,1)_100%)]">
               {isReadingDocument ? (
-                <div className="px-8 py-10 text-sm text-stone-500">Caricamento documento…</div>
+                <div className="px-8 py-10 text-sm text-stone-500">Loading document...</div>
               ) : selectedDocument ? (
                 <article className="mx-auto flex max-w-4xl flex-col px-8 py-10">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-400">
@@ -327,13 +327,13 @@ export default function VaultWorkspace() {
 
                   <div className="mt-8 rounded-[1.75rem] border border-stone-200 bg-white px-6 py-6 shadow-[0_22px_60px_-42px_rgba(58,42,17,0.45)]">
                     <pre className="whitespace-pre-wrap break-words font-sans text-[15px] leading-7 text-stone-700">
-                      {selectedDocument.body || selectedDocument.excerpt || 'Documento vuoto.'}
+                      {selectedDocument.body || selectedDocument.excerpt || 'Empty document.'}
                     </pre>
                   </div>
                 </article>
               ) : (
                 <div className="px-8 py-10 text-sm text-stone-500">
-                  Seleziona un file Markdown dalla lista per aprirlo.
+                  Select a Markdown file from the list to open it.
                 </div>
               )}
             </section>

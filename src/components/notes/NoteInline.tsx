@@ -108,7 +108,7 @@ function NoteCreateForm({ folderId = null }: NoteCreateFormProps) {
         onChange={handleEditorChange}
         onDateDetected={handleDateDetected}
         editorKey={editorKey}
-        placeholder="Scrivi la tua nota… (Markdown supportato)"
+        placeholder="Write your note... (Markdown supported)"
         autofocus
         lang={user?.lang}
       />
@@ -121,7 +121,7 @@ function NoteCreateForm({ folderId = null }: NoteCreateFormProps) {
           />
           {detectedDate && (
             <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-              📅 {detectedDate.raw} → {new Date(detectedDate.iso).toLocaleString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              📅 {detectedDate.raw} → {new Date(detectedDate.iso).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
         </div>
@@ -141,7 +141,7 @@ function NoteCreateForm({ folderId = null }: NoteCreateFormProps) {
             disabled={isPending || !contentPlain.trim()}
             className="text-[0.8125rem] font-medium px-4 py-[0.45rem] rounded-lg bg-stone-900 text-stone-50 shadow-sm hover-lift-sm hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
           >
-            {isPending ? 'Salvataggio…' : <><span>Save</span><span>↓</span></>}
+            {isPending ? 'Saving...' : <><span>Save</span><span>↓</span></>}
           </button>
         </div>
       </div>
@@ -221,7 +221,7 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
             setIsDirty(false)
           }
         }}
-        placeholder="Contenuto nota…"
+        placeholder="Note content..."
         preferredDateRaw={note.due_date_raw ?? undefined}
         lang={user?.lang}
       />
@@ -241,7 +241,7 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
           />
           {detectedDate && (
             <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-              📅 {detectedDate.raw} → {new Date(detectedDate.iso).toLocaleString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              📅 {detectedDate.raw} → {new Date(detectedDate.iso).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
           <span className="text-xs text-stone-400 ml-1">{formatDate(note.updated_at)}</span>
@@ -249,16 +249,16 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
 
         {/* Actions sulla destra */}
         <div className="flex items-center gap-3 flex-wrap ml-auto">
-          {/* Sezione Elimina */}
+          {/* Delete section */}
           {isConfirmingDelete ? (
             <div className="flex items-center gap-1">
-              <span className="text-[0.8125rem] text-stone-500 mr-1">Eliminare?</span>
+              <span className="text-[0.8125rem] text-stone-500 mr-1">Delete?</span>
               <button
                 type="button"
                 onClick={() => setIsConfirmingDelete(false)}
                 className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
               >
-                Annulla
+                Cancel
               </button>
               <button
                 type="button"
@@ -266,7 +266,7 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
                 disabled={isDeleting}
                 className="text-[0.8125rem] font-semibold px-4 py-1.5 rounded-lg bg-red-100 text-red-600 hover-lift-sm hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isDeleting ? '...' : 'Sì'}
+                {isDeleting ? '...' : 'Yes'}
               </button>
             </div>
           ) : (
@@ -276,12 +276,12 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
                 onClick={() => setIsConfirmingDelete(true)}
                 className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-500 transition-colors"
               >
-                Elimina
+                Delete
               </button>
             </div>
           )}
 
-          {/* Salva / Annulla modifiche */}
+          {/* Save / discard changes */}
           {isDirty && (
             <div className="flex items-center gap-1 ml-2 border-l border-stone-100 pl-3">
               <button
@@ -289,7 +289,7 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
                 onClick={() => setIsDirty(false)}
                 className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
               >
-                Annulla
+                Cancel
               </button>
               <button
                 type="button"
@@ -297,18 +297,18 @@ function NoteEditForm({ note, onClose }: NoteEditFormProps) {
                 disabled={isSaving}
                 className="text-[0.8125rem] font-medium px-4 py-[0.45rem] rounded-lg bg-stone-900 text-stone-50 shadow-sm hover-lift-sm hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {isSaving ? 'Salvataggio…' : 'Salva'}
+                {isSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
           )}
 
-          {/* Chiudi accordion archivio */}
+          {/* Close archive accordion */}
           {onClose && (
             <button
               onClick={onClose}
               className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 ml-2 border-l border-stone-100 pl-4 transition-colors"
             >
-              Chiudi
+              Close
             </button>
           )}
         </div>

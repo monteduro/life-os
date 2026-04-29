@@ -1,6 +1,6 @@
 import * as chrono from 'chrono-node'
 
-// chrono-node locali supportati:
+// Supported chrono-node locales:
 // de, en, es, fr, it, ja, nl, pt, ru, sv, uk, zh
 
 export type { ParsedResult } from 'chrono-node'
@@ -23,30 +23,30 @@ const SUPPORTED_LOCALES: Record<string, ChronoLocale> = {
 }
 
 /**
- * Risolve il locale chrono-node dalla stringa lingua.
- * Accetta formati tipo "it", "it-IT", "en-US", ecc.
+ * Resolves the chrono-node locale from a language string.
+ * Accepts formats such as "it", "it-IT", "en-US", and so on.
  * Fallback: navigator.language → 'en'.
  */
 function resolveLocale(lang?: string | null): ChronoLocale {
   const raw = lang || navigator.language || 'en'
-  // Prendi solo il codice lingua base (es. "it-IT" → "it")
+  // Take only the base language code (for example "it-IT" → "it")
   const base = raw.split('-')[0].toLowerCase()
   return SUPPORTED_LOCALES[base] ?? 'en'
 }
 
 /**
- * Parsa le date da un testo usando il locale specificato.
- * Priorità: lang param > navigator.language > 'en'
+ * Parses dates from text using the provided locale.
+ * Priority: lang param > navigator.language > 'en'
  */
 export function parseDates(text: string, ref?: Date, lang?: string | null) {
   const locale = resolveLocale(lang)
   const parser = chrono[locale]
 
-  // chrono[locale] è un oggetto con .parse(), .parseDate(), ecc.
+  // chrono[locale] is an object with .parse(), .parseDate(), and so on.
   if (parser && typeof parser === 'object' && 'parse' in parser) {
     return (parser as typeof chrono.en).parse(text, ref, { forwardDate: true })
   }
 
-  // Fallback sicuro a inglese
+  // Safe fallback to English
   return chrono.en.parse(text, ref, { forwardDate: true })
 }

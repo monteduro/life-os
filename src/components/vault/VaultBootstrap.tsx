@@ -34,12 +34,12 @@ export default function VaultBootstrap() {
               Desktop Vault
             </p>
             <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-              Apri una cartella locale e trattala come database nativo di note Markdown.
+              Open a local folder and treat it as a native database of Markdown notes.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
-              Questo primo slice sposta l&apos;app su desktop, legge cartelle e file `.md`
-              reali e popola una sidebar basata sul filesystem. L&apos;editor TipTap e il layer
-              template restano i prossimi step sopra questa base.
+              This first slice moves the app to desktop, reads real folders and `.md` files,
+              and populates a filesystem-backed sidebar. TipTap editing and the template layer
+              are the next steps on top of this foundation.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -53,7 +53,7 @@ export default function VaultBootstrap() {
                 className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-5 py-3 text-sm font-medium text-stone-50 transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FolderOpen className="h-4 w-4" />
-                {status === 'loading' ? 'Apertura vault…' : 'Apri cartella'}
+                {status === 'loading' ? 'Opening vault...' : 'Open folder'}
               </button>
 
               <span className="text-sm text-stone-500">
@@ -83,13 +83,13 @@ export default function VaultBootstrap() {
               </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Cosa c’è già</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Already implemented</p>
               <ul className="mt-3 space-y-2 text-sm text-stone-200">
-                <li>Selezione cartella locale</li>
-                <li>Scan ricorsivo di cartelle e file `.md`</li>
-                <li>Sidebar guidata dal filesystem</li>
-                <li>Preview documenti in lettura</li>
-                <li>Indice SQLite locale iniziale</li>
+                <li>Local folder selection</li>
+                <li>Recursive scan of folders and `.md` files</li>
+                <li>Filesystem-driven sidebar</li>
+                <li>Read-only document previews</li>
+                <li>Initial local SQLite index</li>
               </ul>
             </div>
 
@@ -97,10 +97,10 @@ export default function VaultBootstrap() {
               <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Indice locale</p>
               <div className="mt-3 space-y-2 text-sm text-stone-200">
                 <p>
-                  {indexStatus === 'indexing' && 'Indicizzazione SQLite in corso…'}
-                  {indexStatus === 'ready' && currentIndex && `${currentIndex.indexedDocuments} documenti e ${currentIndex.indexedFolders} cartelle indicizzati`}
-                  {indexStatus === 'error' && (indexError ?? 'Indicizzazione SQLite fallita')}
-                  {indexStatus === 'idle' && 'Indice non ancora avviato'}
+                  {indexStatus === 'indexing' && 'SQLite indexing in progress...'}
+                  {indexStatus === 'ready' && currentIndex && `${currentIndex.indexedDocuments} documents and ${currentIndex.indexedFolders} folders indexed`}
+                  {indexStatus === 'error' && (indexError ?? 'SQLite indexing failed')}
+                  {indexStatus === 'idle' && 'Index not started yet'}
                 </p>
                 {currentIndex?.databaseExists && currentIndex.indexedAt && (
                   <p className="text-xs text-stone-400">
@@ -111,12 +111,12 @@ export default function VaultBootstrap() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Step successivi</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Next steps</p>
               <ul className="mt-3 space-y-2 text-sm text-stone-200">
-                <li>Ricerca e query sopra l’indice</li>
-                <li>Watcher e re-index incrementale</li>
-                <li>Rename/move in-app</li>
-                <li>Template esterni al vault</li>
+                <li>Search and queries on top of the index</li>
+                <li>Watcher and incremental re-indexing</li>
+                <li>In-app rename/move flows</li>
+                <li>Templates outside the vault</li>
               </ul>
             </div>
             </div>

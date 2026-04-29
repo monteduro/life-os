@@ -52,7 +52,7 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
             if (matchesSelf || hasMatchingChildren) {
                 acc.push({
                     ...node,
-                    children: filteredChildren
+                    children: filteredChildren,
                 })
             }
             return acc
@@ -158,7 +158,7 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
                             autoCapitalize="off"
                             spellCheck={false}
                             className="flex-1 bg-transparent text-xs text-stone-700 outline-none placeholder:text-stone-300 py-1"
-                            placeholder="Cerca cartella..."
+                            placeholder="Search folders..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -166,7 +166,7 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
 
                     <div className="overflow-y-auto flex-1 p-1 scrollbar-hide">
                         {!currentVault ? (
-                            <div className="py-2 px-2 text-xs text-stone-400 text-center">Nessun vault aperto</div>
+                            <div className="py-2 px-2 text-xs text-stone-400 text-center">No vault open</div>
                         ) : (
                             <div className="flex flex-col">
                                 {!search.trim() && (
@@ -181,13 +181,13 @@ export default function FolderSelector({ folderId, onChange, readOnly = false }:
                                         <div className="w-3.5 flex items-center justify-center">
                                             <InboxIcon className={`w-3 h-3 ${folderId === null ? 'text-stone-700' : 'text-stone-300'}`} />
                                         </div>
-                                        <span className="flex-1 truncate">{currentVault.rootName}</span>
+                                        <span className="flex-1 truncate">Inbox</span>
                                         {folderId === null && <Check className="w-3.5 h-3.5 text-stone-700" />}
                                     </button>
                                 )}
 
                                 {folderTree.length === 0 && search.trim() ? (
-                                    <div className="py-2 px-2 text-xs text-stone-400 text-center">Nessun risultato</div>
+                                    <div className="py-2 px-2 text-xs text-stone-400 text-center">No results</div>
                                 ) : (
                                     folderTree.map(folder => renderFolderItem(folder))
                                 )}

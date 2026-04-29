@@ -23,7 +23,7 @@ export default function FolderTree({
   if (visibleFolders.length === 0) {
     return (
       <div className="px-3 py-6 text-center text-xs text-stone-400">
-        Nessuna cartella. Crea la prima!
+        No folders yet. Create the first one.
       </div>
     )
   }

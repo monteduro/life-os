@@ -29,7 +29,7 @@ export const noteKeys = {
 /**
  * GET /notes — filtrato per folder.
  * folderId === null  → inbox (folder_id=null)
- * folderId === string → note della cartella specifica
+ * folderId === string → notes for a specific folder
  * folderId === undefined → tutte le note (nessun filtro)
  */
 export const useNotes = (folderId?: string | null) => {

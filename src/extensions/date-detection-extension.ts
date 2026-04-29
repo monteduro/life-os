@@ -11,7 +11,7 @@ export interface DetectedDate {
 
 export interface DateDetectionOptions {
   onDateDetected?: (date: DetectedDate | null) => void
-  /** Se fornito, al caricamento viene evidenziata solo questa data (il testo raw salvato nelle API) */
+  /** When provided, only this date is highlighted on load (the raw text saved by the API). */
   preferredRaw?: string
   /** Lingua per il parsing delle date (es. "it", "en", "fr"). Fallback: navigator.language */
   lang?: string | null
@@ -102,8 +102,8 @@ function buildDecorations(
   const fullText = segments.map((s) => s.text).join('')
   const results: ParsedResult[] = parseDates(fullText, undefined, lang)
 
-  // Se c'è un preferredRaw, evidenzia solo quello (ignora gli altri)
-  // Altrimenti prendi il primo non-dismissed
+  // If there is a preferredRaw, highlight only that one (ignore the others).
+  // Otherwise take the first non-dismissed match.
   const match = preferredRaw
     ? results.find((r) => !dismissed.has(r.text) && r.text === preferredRaw)
         ?? results.find((r) => !dismissed.has(r.text))
@@ -167,7 +167,7 @@ export const DateDetectionExtension = Extension.create<DateDetectionOptions>({
 
         state: {
           init(_, { doc }) {
-            // Al caricamento pre-dismissiamo tutti i match che NON sono preferredRaw
+            // On load, pre-dismiss every match that is NOT preferredRaw
             const allResults: ParsedResult[] = parseDates(
               extractTextSegments(doc).map((s) => s.text).join(''),
               undefined,

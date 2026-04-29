@@ -75,8 +75,8 @@
   background: #f3f4f6;
 }
 
-/* Hover lift effect — usando transform diretto perché Tailwind v4 
-   usa la proprietà CSS `translate` nativa che non si anima bene su tutti i browser */
+/* Hover lift effect — use transform directly because Tailwind v4
+   relies on native CSS `translate`, which does not animate well in every browser. */
 .hover-lift {
   transform: translateY(0);
   transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;

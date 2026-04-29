@@ -45,7 +45,7 @@ export function MentionNodeView({ node }: NodeViewProps) {
       return
     }
 
-    // Salva automaticamente se ci sono modifiche non salvate
+    // Save automatically when there are unsaved changes
     if (onBeforeNavigate) {
       await onBeforeNavigate()
     }

@@ -1,10 +1,10 @@
-// Configurazione API — valore da .env, con fallback al backend locale
-// Il path /api è incluso nella base (come da smartnote-api.json → servers[0].url)
+// API configuration — value from .env, with a fallback to the local backend.
+// The /api path is already included in the base URL (see smartnote-api.json → servers[0].url).
 export const API_BASE_URL: string = import.meta.env.VITE_API_URL
 
 // Endpoints
-// Il server base è già http://smart-notes.test/api (vedi smartnote-api.json → servers[0].url)
-// quindi i path non ripetono /api
+// The base server is already http://smart-notes.test/api (see smartnote-api.json → servers[0].url),
+// so the endpoint paths do not repeat /api.
 export const API_ENDPOINTS = {
   notes: '/notes',
   folders: '/folders',

@@ -147,7 +147,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     } catch (error) {
       set({
         indexStatus: 'error',
-        indexError: error instanceof Error ? error.message : 'Impossibile leggere lo stato dell’indice locale.',
+        indexError: error instanceof Error ? error.message : 'Unable to read local index status.',
       })
     }
   },
@@ -171,7 +171,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       await get().loadVault(selectedPath)
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile aprire la cartella selezionata.',
+        error: error instanceof Error ? error.message : 'Unable to open the selected folder.',
         status: 'error',
       })
     }
@@ -218,14 +218,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       } catch (error) {
         set({
           indexStatus: 'error',
-          indexError: error instanceof Error ? error.message : 'Indicizzazione SQLite fallita.',
+        indexError: error instanceof Error ? error.message : 'SQLite indexing failed.',
         })
       }
     } catch (error) {
       set({
         status: 'error',
         indexStatus: 'idle',
-        error: error instanceof Error ? error.message : 'Indicizzazione iniziale fallita.',
+        error: error instanceof Error ? error.message : 'Initial indexing failed.',
         currentVault: null,
       })
     }
@@ -270,7 +270,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       set({
         selectedDocument: null,
         isReadingDocument: false,
-        error: error instanceof Error ? error.message : 'Impossibile leggere il file selezionato.',
+        error: error instanceof Error ? error.message : 'Unable to read the selected file.',
       })
     }
   },
@@ -278,7 +278,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   async createFolder(parentPath, name) {
     const rootPath = get().currentVault?.rootPath
     if (!rootPath) {
-      set({ error: 'Nessun vault aperto.' })
+      set({ error: 'No vault open.' })
       return null
     }
 
@@ -294,7 +294,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       return folderPath
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile creare la cartella.',
+        error: error instanceof Error ? error.message : 'Unable to create the folder.',
       })
       return null
     }
@@ -305,7 +305,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const rootPath = currentVault?.rootPath
 
     if (!rootPath) {
-      set({ error: 'Nessun vault aperto.' })
+      set({ error: 'No vault open.' })
       return null
     }
 
@@ -321,7 +321,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       return renamedPath
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile rinominare la cartella.',
+        error: error instanceof Error ? error.message : 'Unable to rename the folder.',
       })
       return null
     }
@@ -331,7 +331,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const rootPath = get().currentVault?.rootPath
 
     if (!rootPath) {
-      set({ error: 'Nessun vault aperto.' })
+      set({ error: 'No vault open.' })
       return null
     }
 
@@ -351,7 +351,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       return movedPath
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile spostare la cartella.',
+        error: error instanceof Error ? error.message : 'Unable to move the folder.',
       })
       return null
     }
@@ -360,7 +360,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   async createDocument(parentPath, title) {
     const rootPath = get().currentVault?.rootPath
     if (!rootPath) {
-      set({ error: 'Nessun vault aperto.' })
+      set({ error: 'No vault open.' })
       return null
     }
 
@@ -376,7 +376,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       return document
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile creare il documento.',
+        error: error instanceof Error ? error.message : 'Unable to create the document.',
       })
       return null
     }
@@ -385,7 +385,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   async moveDocument(path, targetFolderPath, fileName) {
     const rootPath = get().currentVault?.rootPath
     if (!rootPath) {
-      set({ error: 'Nessun vault aperto.' })
+      set({ error: 'No vault open.' })
       return null
     }
 
@@ -408,7 +408,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       return document
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile spostare il documento.',
+        error: error instanceof Error ? error.message : 'Unable to move the document.',
       })
       return null
     }
@@ -427,7 +427,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       return document
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile salvare il documento.',
+        error: error instanceof Error ? error.message : 'Unable to save the document.',
       })
       return null
     }
@@ -449,7 +449,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       }
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Impossibile eliminare il documento.',
+        error: error instanceof Error ? error.message : 'Unable to delete the document.',
       })
     }
   },
@@ -498,7 +498,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       set({
         searchResults: [],
         searchStatus: 'error',
-        searchError: error instanceof Error ? error.message : 'Ricerca locale fallita.',
+        searchError: error instanceof Error ? error.message : 'Local search failed.',
       })
     }
   },

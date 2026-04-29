@@ -37,12 +37,12 @@ export default function FolderItem({
   // Icon
   const Icon = getIcon(folder.icon, 'folder')
 
-  // Root folders più evidenti
+  // Make root folders slightly more prominent.
   const isRoot = depth === 0
 
   const paddingLeft = 4 + depth * 22
 
-  // Ricalcolo per childBranchLeft: paddingLeft + mezzo icona
+  // Recompute childBranchLeft: paddingLeft + half the icon width.
   const branchLeft = paddingLeft + 8; // pl + w-4(16px)/2
 
   const setNodeRef = (node: HTMLDivElement | null) => {

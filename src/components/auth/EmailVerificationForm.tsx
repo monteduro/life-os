@@ -2,11 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { useVerifyEmail, useResendVerificationCode } from '../../api/authApi'
 
 interface Props {
-  /** Email dell'utente non verificato, precompilata dal login */
+  /** Unverified user email, prefilled from login. */
   email: string
-  /** Callback per tornare al form di login (es. cambio email) */
+  /** Callback to go back to the login form (for example to change email). */
   onBackToLogin: () => void
-  /** Callback invocata dopo una verifica andata a buon fine */
+  /** Callback invoked after a successful verification. */
   onVerified: () => void
 }
 
@@ -29,7 +29,7 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    // onSuccess: la sessione non esiste ancora, torna al login con flag verified
+    // onSuccess: the session does not exist yet, so go back to login with a verified flag
     verifyEmail({ email, code }, { onSuccess: onVerified })
   }
 
@@ -41,10 +41,10 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-md p-8">
-        {/* Intestazione */}
+        {/* Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            {/* Icona envelope */}
+            {/* Envelope icon */}
             <svg
               className="h-6 w-6 text-blue-600"
               fill="none"
@@ -59,18 +59,18 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Verifica email</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Verify email</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Abbiamo inviato un codice a 6 cifre a
+            We sent a 6-digit code to
           </p>
           <p className="text-sm font-medium text-gray-800 mt-0.5">{email}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Codice */}
+          {/* Code */}
           <div>
             <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
-              Codice di verifica
+              Verification code
             </label>
             <input
               id="code"
@@ -87,7 +87,7 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
             />
           </div>
 
-          {/* Errore verifica */}
+          {/* Verification error */}
           {verifyError && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               {verifyError.message}
@@ -100,15 +100,15 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
             disabled={isVerifying || code.length < 6}
             className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
           >
-            {isVerifying ? 'Verifica in corso…' : 'Verifica email'}
+            {isVerifying ? 'Verifying...' : 'Verify email'}
           </button>
         </form>
 
-        {/* Sezione reinvio codice */}
+        {/* Resend code section */}
         <div className="mt-6 text-center space-y-2">
           {resendSuccess && (
             <p className="text-sm text-green-600 font-medium">
-              Codice inviato! Controlla la tua casella email.
+              Code sent! Check your inbox.
             </p>
           )}
           {resendError && (
@@ -116,14 +116,14 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
           )}
 
           <p className="text-sm text-gray-500">
-            Non hai ricevuto il codice?{' '}
+            Didn't receive the code?{' '}
             <button
               type="button"
               onClick={handleResend}
               disabled={isResending}
               className="font-medium text-blue-600 hover:text-blue-500 disabled:opacity-50 transition"
             >
-              {isResending ? 'Invio in corso…' : 'Reinvia codice'}
+              {isResending ? 'Sending...' : 'Resend code'}
             </button>
           </p>
 
@@ -133,7 +133,7 @@ export default function EmailVerificationForm({ email, onBackToLogin, onVerified
               onClick={onBackToLogin}
               className="hover:text-gray-600 transition"
             >
-              ← Torna al login
+              ← Back to sign in
             </button>
           </p>
         </div>

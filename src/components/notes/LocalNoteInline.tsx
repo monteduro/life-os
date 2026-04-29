@@ -60,7 +60,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       setPendingFileName(stripMarkdownExtension(summary.name))
       setEditorKey((value) => value + 1)
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Impossibile leggere il documento.')
+      setSaveError(error instanceof Error ? error.message : 'Unable to read the document.')
     } finally {
       setIsLoading(false)
     }
@@ -101,7 +101,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
         }
       }
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Impossibile salvare il documento.')
+      setSaveError(error instanceof Error ? error.message : 'Unable to save the document.')
     } finally {
       setIsSaving(false)
     }
@@ -115,7 +115,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       await deleteDocument(summary.path)
       onClose?.()
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Impossibile eliminare il documento.')
+      setSaveError(error instanceof Error ? error.message : 'Unable to delete the document.')
     } finally {
       setIsDeleting(false)
       setIsConfirmingDelete(false)
@@ -136,7 +136,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
         onClose()
       }
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Impossibile spostare il documento.')
+      setSaveError(error instanceof Error ? error.message : 'Unable to move the document.')
     }
   }, [isDirty, moveDocument, onClose, summary.path])
 
@@ -160,14 +160,14 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
       }
       setRenameFileOpen(false)
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Impossibile rinominare il file.')
+      setSaveError(error instanceof Error ? error.message : 'Unable to rename the file.')
     }
   }, [isDirty, moveDocument, onClose, pendingFileName, summary.parentPath, summary.path])
 
   if (isLoading) {
     return (
       <div className="group flex flex-col p-4 sm:p-6 rounded-[1.25rem] bg-white border border-stone-100 shadow-soft">
-        <p className="text-sm text-stone-400">Caricamento documento…</p>
+        <p className="text-sm text-stone-400">Loading document...</p>
       </div>
     )
   }
@@ -186,7 +186,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
             await handleSave()
           }
         }}
-        placeholder="Scrivi la tua nota…"
+        placeholder="Write your note..."
         autofocus={summary.excerpt.length === 0}
       />
 
@@ -219,13 +219,13 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
           </button>
           {isConfirmingDelete ? (
             <div className="flex items-center gap-1">
-              <span className="text-[0.8125rem] text-stone-500 mr-1">Eliminare?</span>
+              <span className="text-[0.8125rem] text-stone-500 mr-1">Delete?</span>
               <button
                 type="button"
                 onClick={() => setIsConfirmingDelete(false)}
                 className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
               >
-                Annulla
+                Cancel
               </button>
               <button
                 type="button"
@@ -235,7 +235,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
                 disabled={isDeleting}
                 className="text-[0.8125rem] font-semibold px-4 py-1.5 rounded-lg bg-red-100 text-red-600 hover-lift-sm hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isDeleting ? '...' : 'Sì'}
+                {isDeleting ? '...' : 'Yes'}
               </button>
             </div>
           ) : (
@@ -244,7 +244,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
               onClick={() => setIsConfirmingDelete(true)}
               className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-500 transition-colors"
             >
-              Elimina
+              Delete
             </button>
           )}
           {onClose && (
@@ -253,7 +253,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
               onClick={onClose}
               className="text-[0.8125rem] font-medium px-3 py-1.5 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
             >
-              Chiudi
+              Close
             </button>
           )}
           <button
@@ -264,7 +264,7 @@ export default function LocalNoteInline({ summary, onClose }: LocalNoteInlinePro
             disabled={isSaving || !isDirty}
             className="text-[0.8125rem] font-medium px-4 py-[0.45rem] rounded-lg bg-stone-900 text-stone-50 shadow-sm hover-lift-sm hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {isSaving ? 'Salvataggio…' : 'Salva'}
+            {isSaving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

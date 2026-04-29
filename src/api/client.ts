@@ -1,14 +1,14 @@
 import { API_BASE_URL } from '../config/api'
 
-// Estende le opzioni native di fetch aggiungendo "params"
-// per supportare query string (?key=value) in modo dichiarativo
+// Extends the native fetch options with "params"
+// to support query strings (?key=value) declaratively.
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>
 }
 
-// Errore HTTP tipizzato: espone lo status code e il body completo
-// così i consumer (es. authApi.ts) possono ispezionare campi custom
-// come "email_unverified" restituiti dal backend.
+// Typed HTTP error: exposes the status code and the full response body
+// so consumers (for example authApi.ts) can inspect custom fields
+// such as "email_unverified" returned by the backend.
 export class ApiError extends Error {
   readonly status: number
   readonly body: Record<string, unknown>
@@ -22,48 +22,48 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  // Legge il cookie XSRF-TOKEN impostato da Laravel Sanctum.
-  // Il valore è URL-encoded, quindi va decodificato prima di usarlo come header.
+  // Reads the XSRF-TOKEN cookie set by Laravel Sanctum.
+  // The value is URL-encoded, so it must be decoded before using it as a header.
   private getCsrfToken(): string | null {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/)
     return match ? decodeURIComponent(match[1]) : null
   }
 
-  // Metodo privato centrale: tutte le richieste HTTP passano da qui.
-  // È generico (<T>) così TypeScript sa che tipo di dato aspettarsi in risposta.
+  // Central private method: every HTTP request goes through here.
+  // It is generic (<T>) so TypeScript knows the response shape.
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    // Separiamo "params" dalle opzioni di fetch native (params non esiste in fetch)
+    // Split "params" from the native fetch options ("params" is not a fetch option).
     const { params, ...fetchOptions } = options
 
-    // Costruisce l'URL completo usando API_BASE_URL da config/api.ts
-    // es. "http://smart-notes.test/api/notes"
+    // Builds the full URL using API_BASE_URL from config/api.ts,
+    // for example "http://smart-notes.test/api/notes".
     let url = `${API_BASE_URL}${endpoint}`
 
-    // Se ci sono query params, li aggiunge all'URL
-    // es. { page: '2', limit: '10' } → "?page=2&limit=10"
+    // Adds query params to the URL when present,
+    // for example { page: '2', limit: '10' } → "?page=2&limit=10".
     if (params) {
       const searchParams = new URLSearchParams(params)
       url += `?${searchParams.toString()}`
     }
 
-    // Costruisce la config per fetch, fondendo:
-    // - credentials: 'include' per inviare i cookie di sessione Sanctum
-    // - gli header di default (Content-Type, Accept)
-    // - gli eventuali header custom passati nelle options (es. Authorization)
-    // - il resto delle fetchOptions (method, body, signal, ecc.)
+    // Builds the fetch config by merging:
+    // - credentials: 'include' to send Sanctum session cookies
+    // - default headers (Content-Type, Accept)
+    // - any custom headers passed in options (for example Authorization)
+    // - the remaining fetchOptions (method, body, signal, and so on)
     const config: RequestInit = {
-      credentials: 'include', // Necessario per Laravel Sanctum (session cookie)
+      credentials: 'include', // Required for Laravel Sanctum session cookies
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        ...fetchOptions.headers, // override degli header di default se necessario
+        ...fetchOptions.headers, // override default headers when needed
       },
       ...fetchOptions,
     }
 
-    // Per le richieste che modificano dati (POST, PUT, PATCH, DELETE),
-    // Laravel Sanctum richiede il token XSRF come header X-XSRF-TOKEN.
-    // Il token viene letto dal cookie XSRF-TOKEN impostato da /sanctum/csrf-cookie.
+    // For requests that modify data (POST, PUT, PATCH, DELETE),
+    // Laravel Sanctum requires the XSRF token in the X-XSRF-TOKEN header.
+    // The token is read from the XSRF-TOKEN cookie set by /sanctum/csrf-cookie.
     const method = (config.method ?? 'GET').toUpperCase()
     if (!['GET', 'HEAD'].includes(method)) {
       const csrfToken = this.getCsrfToken()
@@ -74,11 +74,11 @@ class ApiClient {
 
     const response = await fetch(url, config)
 
-    // fetch non lancia errori per 4xx/5xx: dobbiamo controllare response.ok manualmente.
-    // response.ok è true solo per status 200-299.
+    // fetch does not throw for 4xx/5xx responses, so we must check response.ok ourselves.
+    // response.ok is true only for 200-299 status codes.
     if (!response.ok) {
-      // Tenta di leggere il body dell'errore (es. { message: "Not found" } da Laravel)
-      // Se il body non è JSON valido, usa statusText come fallback
+      // Try to read the error body (for example { message: "Not found" } from Laravel).
+      // If the body is not valid JSON, fall back to statusText.
       const body = await response.json().catch(() => ({
         message: response.statusText,
       }))
@@ -89,31 +89,31 @@ class ApiClient {
       )
     }
 
-    // Le risposte 204 No Content (tipiche dei DELETE) non hanno body:
-    // chiamare .json() su di esse lancerebbe un errore
+    // 204 No Content responses (common for DELETE) do not have a body:
+    // calling .json() on them would throw.
     if (response.status === 204) {
       return undefined as unknown as T
     }
 
-    // Parsa e ritorna il body JSON tipizzato come T
+    // Parse and return the JSON body typed as T.
     return response.json()
   }
 
-  // GET — recupera dati (lettura)
+  // GET — fetch data (read)
   get<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' })
   }
 
-  // POST — crea una risorsa (scrittura)
+  // POST — create a resource (write)
   post<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(data), // serializza il payload in JSON
+      body: JSON.stringify(data), // serialize the payload as JSON
     })
   }
 
-  // PUT — sostituisce una risorsa intera (aggiornamento completo)
+  // PUT — replace an entire resource (full update)
   put<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -122,7 +122,7 @@ class ApiClient {
     })
   }
 
-  // PATCH — aggiorna solo alcuni campi (aggiornamento parziale)
+  // PATCH — update only some fields (partial update)
   patch<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -131,11 +131,11 @@ class ApiClient {
     })
   }
 
-  // DELETE — elimina una risorsa
+  // DELETE — delete a resource
   delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' })
   }
 }
 
-// Esportiamo una singola istanza condivisa (singleton pattern)
+// Export a single shared instance (singleton pattern).
 export const apiClient = new ApiClient()
