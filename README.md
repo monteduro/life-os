@@ -60,6 +60,8 @@ Implemented:
 - sidebar drag and drop for folders
 - TipTap to Markdown round-trip
 - YAML frontmatter preservation
+- natural-language reminder detection with persisted due dates
+- multi-date reminder disambiguation and dismissed reminder persistence
 - SQLite local index for search
 - folder mentions persisted as wikilinks like `[[Projects/Alpha]]`
 - mention propagation on folder rename/move
@@ -70,6 +72,7 @@ Planned next:
 - template registry outside the vault
 - attachment import/copy flow
 - document-to-document linking model
+- calendar-oriented reminder and due-date views
 - richer structured views and stats
 
 The working roadmap lives in [docs/desktop-filesystem-roadmap.md](docs/desktop-filesystem-roadmap.md).

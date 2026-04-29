@@ -175,6 +175,10 @@ These are the main files to migrate first:
   - `created_at`
   - `updated_at`
   - `tags`
+- [x] Persist reminder metadata in frontmatter:
+  - `due_date`
+  - `due_date_raw`
+  - dismissed reminder candidates
 - [x] Map markdown body to the current TipTap editor model.
 - [x] Map TipTap output back to canonical markdown.
 - [ ] Define fallback behavior for malformed frontmatter or unsupported markdown content.
@@ -192,7 +196,7 @@ These are the main files to migrate first:
 - [x] Store content hash and last indexed timestamp per file.
 - [x] Implement incremental re-indexing from watcher events.
 - [x] Add full-text search queries for fast filtering and global search.
-- [ ] Add index health/rebuild commands.
+- [x] Add index health/rebuild commands.
 
 ### Phase 5: Frontend Data Migration
 
@@ -226,6 +230,10 @@ These are the main files to migrate first:
 - [x] Persist folder mentions as markdown wikilinks and reload them as TipTap mention nodes.
 - [x] Add rename/move propagation for folder mentions when folders are renamed or moved inside the app.
 - [x] Add rename/move support for folders and markdown files in the app UI.
+- [x] Add natural-language reminder detection for note due dates.
+- [x] Persist selected due dates across reloads and local draft recovery.
+- [x] Support multiple detected date candidates with explicit reminder selection.
+- [x] Persist dismissed reminder candidates so removed dates do not reappear on reload.
 - [ ] Decide how note-to-note links are represented in markdown and in the index.
 - [ ] Extract note title and plain text summary from markdown for preview cards.
 - [x] Add save semantics suitable for local files:
@@ -235,24 +243,24 @@ These are the main files to migrate first:
 
 ## Recommended Next Steps
 
-1. `Index health commands`
-   - manual rebuild
-   - visible index status/debug info
-   - clearer recovery path when watcher/index drift
-
-2. `Template foundation`
+1. `Template foundation`
    - template registry outside the vault
    - first schema version
    - generic properties panel
 
-3. `Attachment flow`
+2. `Attachment flow`
    - import/copy into vault
    - reference from markdown/frontmatter
 
-4. `Document linking model`
+3. `Document linking model`
    - note-to-note links in markdown
    - index representation
    - preview/backlink behavior
+
+4. `Reminder/calendar views`
+   - surface persisted due dates in dedicated views
+   - define reminder grouping and sorting
+   - prepare the first calendar-oriented screen
 
 5. `Repository hygiene`
    - add a real `CHANGELOG.md`
