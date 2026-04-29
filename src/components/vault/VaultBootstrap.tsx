@@ -4,6 +4,12 @@ import { FolderOpen, RefreshCw } from 'lucide-react'
 import { useVaultStore } from '../../stores/vaultStore'
 import VaultWorkspace from './VaultWorkspace'
 
+declare global {
+  interface Window {
+    __TAURI_INTERNALS__?: unknown
+  }
+}
+
 export default function VaultBootstrap() {
   const {
     status,
@@ -16,10 +22,15 @@ export default function VaultBootstrap() {
     openVault,
     clearError,
   } = useVaultStore()
+  const hasDesktopShell = typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__)
 
   useEffect(() => {
+    if (!hasDesktopShell) {
+      return
+    }
+
     void loadRecentVault()
-  }, [loadRecentVault])
+  }, [hasDesktopShell, loadRecentVault])
 
   if (status === 'ready' && currentVault) {
     return <VaultWorkspace />
@@ -37,9 +48,9 @@ export default function VaultBootstrap() {
               Open a local folder and treat it as a native database of Markdown notes.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
-              This first slice moves the app to desktop, reads real folders and `.md` files,
-              and populates a filesystem-backed sidebar. TipTap editing and the template layer
-              are the next steps on top of this foundation.
+              lifeOS currently relies on the Tauri desktop shell for vault access, local
+              indexing, file watching, and in-app document operations. The plain Vite browser
+              preview is useful only for frontend iteration, not as a working product runtime.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -49,17 +60,28 @@ export default function VaultBootstrap() {
                   clearError()
                   void openVault()
                 }}
-                disabled={status === 'loading'}
+                disabled={status === 'loading' || !hasDesktopShell}
                 className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-5 py-3 text-sm font-medium text-stone-50 transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FolderOpen className="h-4 w-4" />
-                {status === 'loading' ? 'Opening vault...' : 'Open folder'}
+                {!hasDesktopShell
+                  ? 'Desktop shell required'
+                  : status === 'loading'
+                    ? 'Opening vault...'
+                    : 'Open folder'}
               </button>
 
               <span className="text-sm text-stone-500">
-                Avvia da desktop con `npm run tauri:dev`.
+                Start the full app with `npm run tauri:dev`.
               </span>
             </div>
+
+            {!hasDesktopShell && (
+              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                The browser preview cannot open or manage a vault. Use it only to iterate on
+                styling and static UI states.
+              </div>
+            )}
 
             {error && (
               <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -71,14 +93,14 @@ export default function VaultBootstrap() {
           <aside className="rounded-[2rem] border border-stone-200/70 bg-stone-950 p-8 text-stone-50 shadow-[0_30px_80px_-45px_rgba(16,10,2,0.8)]">
             <div className="flex items-center gap-3 text-sm text-stone-300">
               <RefreshCw className={`h-4 w-4 ${status === 'loading' ? 'animate-spin' : ''}`} />
-              {status === 'loading' ? 'Indicizzazione iniziale in corso' : 'Stato attuale'}
+              {status === 'loading' ? 'Initial indexing in progress' : 'Current state'}
             </div>
 
             <div className="mt-8 space-y-4">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Step attivo</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Active step</p>
                 <p className="mt-2 text-lg font-medium text-white">
-                  Vault bootstrap + scan filesystem
+                  Vault bootstrap + filesystem scan
                 </p>
               </div>
 
@@ -94,7 +116,7 @@ export default function VaultBootstrap() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Indice locale</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-stone-400">Local index</p>
               <div className="mt-3 space-y-2 text-sm text-stone-200">
                 <p>
                   {indexStatus === 'indexing' && 'SQLite indexing in progress...'}
